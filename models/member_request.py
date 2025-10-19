@@ -4,6 +4,8 @@ from sqlmodel import SQLModel, Field
 
 
 class MemberRequest(SQLModel, table=True):
+    __tablename__ = "member_request"
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(default=datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(

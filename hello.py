@@ -1,9 +1,9 @@
-from db import init_db
+from db import engine, SQLModel
 
 
 def main():
     print("Hello from healthy-shifts!")
-    init_db()
+    SQLModel.metadata.create_all(engine)
 
 
 if __name__ == "__main__":

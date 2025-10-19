@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from pydantic.v1 import NonNegativeInt, PositiveInt
+from pydantic import NonNegativeInt, PositiveInt
 from sqlmodel import SQLModel, Field, Column, JSON
 
 
@@ -14,5 +14,5 @@ class Shift(SQLModel, table=True):
     seconds_since_midnight: NonNegativeInt = Field(default=0, nullable=False)
     duration_seconds: PositiveInt = Field(default=3600, nullable=False)
     # 0 Sunday -> 6 Saturday
-    days: list[str] = Field(default_factory=list, sa_column=Column(JSON), nullable=False)
+    days: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     description: str = Field(default='', nullable=False)

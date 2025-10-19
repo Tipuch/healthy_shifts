@@ -5,6 +5,8 @@ from pydantic import PositiveInt
 
 
 class ShiftConstraint(SQLModel, table=True):
+    __tablename__ = "shift_constraint"
+
     shift_id: uuid.UUID = Field(foreign_key="shift.id", primary_key=True)
     linked_shift_id: uuid.UUID = Field(foreign_key="shift.id", primary_key=True)
     # 1 would prevent if member was assigned in the last linked shift,
