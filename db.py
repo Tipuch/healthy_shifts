@@ -1,10 +1,18 @@
 from models import Member, MemberGroup, MemberRequest, Shift, ShiftConstraint, ShiftScheduled
 from sqlmodel import SQLModel, Session, create_engine
+from sqlalchemy import event
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 engine = create_engine(sqlite_url)
+
+# Enable foreign key constraints for SQLite
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 
 async def get_session():

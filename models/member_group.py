@@ -11,4 +11,4 @@ class MemberGroup(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
     )
-    name: str = Field(index=True, max_length=500, nullable=False)
+    name: str = Field(index=True, max_length=500, nullable=False, min_length=1)

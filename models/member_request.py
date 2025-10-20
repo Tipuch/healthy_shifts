@@ -14,4 +14,4 @@ class MemberRequest(SQLModel, table=True):
     start_at: datetime = Field(nullable=False)
     end_at: datetime = Field(nullable=False)
     description: str = Field(default='', nullable=False)
-    member_id: uuid.UUID = Field(index=True, foreign_key="member.id", nullable=False)
+    member_id: uuid.UUID = Field(index=True, foreign_key="member.id", nullable=False, min_length=1)

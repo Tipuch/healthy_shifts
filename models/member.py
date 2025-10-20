@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlmodel import SQLModel, Field
+from sqlalchemy.orm import validates
 
 
 class Member(SQLModel, table=True):
@@ -10,6 +11,12 @@ class Member(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
     )
-    name: str = Field(index=True, max_length=500, nullable=False)
-    email: str = Field(unique=True, max_length=500, nullable=False)
-    member_group_id: uuid.UUID = Field(index=True, foreign_key="member_group.id", nullable=False)
+    name: str = Field(index=True, max_length=500, nullable=False, min_length=1)
+    email: str = Field(unique=True, index=True, max_length=500, nullable=False, min_length=5)
+    member_group_id: uuid.UUID = Field(index=True, foreign_key="member_group.id", nullable=False, min_length=1)
+
+    @validates("email")
+    def validate_email(self, _, address):
+        if "@" not in address:
+            raise ValueError("failed simple email validation")
+        return address
