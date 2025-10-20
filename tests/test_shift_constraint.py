@@ -21,9 +21,7 @@ class TestShiftConstraintCRUD:
 
         # Act
         constraint = ShiftConstraint(
-            shift_id=shift1.id,
-            linked_shift_id=shift2.id,
-            within_last_shifts=2
+            shift_id=shift1.id, linked_shift_id=shift2.id, within_last_shifts=2
         )
         session.add(constraint)
         session.commit()
@@ -53,10 +51,7 @@ class TestShiftConstraintCRUD:
         shift2 = shift_factory()
 
         # Act
-        constraint = ShiftConstraint(
-            shift_id=shift1.id,
-            linked_shift_id=shift2.id
-        )
+        constraint = ShiftConstraint(shift_id=shift1.id, linked_shift_id=shift2.id)
         session.add(constraint)
         session.commit()
         session.refresh(constraint)
@@ -72,7 +67,7 @@ class TestShiftConstraintCRUD:
         # Act
         statement = select(ShiftConstraint).where(
             ShiftConstraint.shift_id == created.shift_id,
-            ShiftConstraint.linked_shift_id == created.linked_shift_id
+            ShiftConstraint.linked_shift_id == created.linked_shift_id,
         )
         result = session.exec(statement).first()
 
@@ -82,7 +77,9 @@ class TestShiftConstraintCRUD:
         assert result.linked_shift_id == created.linked_shift_id
         assert result.within_last_shifts == 5
 
-    def test_read_all_shift_constraints(self, session: Session, shift_constraint_factory):
+    def test_read_all_shift_constraints(
+        self, session: Session, shift_constraint_factory
+    ):
         """Test reading multiple shift constraints."""
         # Arrange
         shift_constraint_factory(within_last_shifts=1)
@@ -130,7 +127,7 @@ class TestShiftConstraintCRUD:
         # Assert
         statement = select(ShiftConstraint).where(
             ShiftConstraint.shift_id == shift_id,
-            ShiftConstraint.linked_shift_id == linked_id
+            ShiftConstraint.linked_shift_id == linked_id,
         )
         result = session.exec(statement).first()
         assert result is None
@@ -146,27 +143,25 @@ class TestShiftConstraintRelationships:
         # Arrange
         morning_shift = shift_factory(
             seconds_since_midnight=28800,  # 8 AM
-            description="Morning Shift"
+            description="Morning Shift",
         )
         evening_shift = shift_factory(
             seconds_since_midnight=57600,  # 4 PM
-            description="Evening Shift"
+            description="Evening Shift",
         )
 
         # Act
         constraint = shift_constraint_factory(
             shift_id=morning_shift.id,
             linked_shift_id=evening_shift.id,
-            within_last_shifts=1
+            within_last_shifts=1,
         )
 
         # Assert
         assert constraint.shift_id == morning_shift.id
         assert constraint.linked_shift_id == evening_shift.id
 
-    def test_shift_can_have_multiple_constraints(
-        self, session: Session, shift_factory
-    ):
+    def test_shift_can_have_multiple_constraints(self, session: Session, shift_factory):
         """Test that a shift can have multiple constraints linking to different shifts."""
         # Arrange
         primary_shift = shift_factory(description="Primary")
@@ -176,19 +171,13 @@ class TestShiftConstraintRelationships:
 
         # Act - Create multiple constraints from primary shift
         constraint1 = ShiftConstraint(
-            shift_id=primary_shift.id,
-            linked_shift_id=linked1.id,
-            within_last_shifts=1
+            shift_id=primary_shift.id, linked_shift_id=linked1.id, within_last_shifts=1
         )
         constraint2 = ShiftConstraint(
-            shift_id=primary_shift.id,
-            linked_shift_id=linked2.id,
-            within_last_shifts=2
+            shift_id=primary_shift.id, linked_shift_id=linked2.id, within_last_shifts=2
         )
         constraint3 = ShiftConstraint(
-            shift_id=primary_shift.id,
-            linked_shift_id=linked3.id,
-            within_last_shifts=3
+            shift_id=primary_shift.id, linked_shift_id=linked3.id, within_last_shifts=3
         )
         session.add_all([constraint1, constraint2, constraint3])
         session.commit()
@@ -211,14 +200,10 @@ class TestShiftConstraintRelationships:
 
         # Act
         constraint1 = ShiftConstraint(
-            shift_id=source1.id,
-            linked_shift_id=target_shift.id,
-            within_last_shifts=1
+            shift_id=source1.id, linked_shift_id=target_shift.id, within_last_shifts=1
         )
         constraint2 = ShiftConstraint(
-            shift_id=source2.id,
-            linked_shift_id=target_shift.id,
-            within_last_shifts=2
+            shift_id=source2.id, linked_shift_id=target_shift.id, within_last_shifts=2
         )
         session.add_all([constraint1, constraint2])
         session.commit()
@@ -238,14 +223,10 @@ class TestShiftConstraintRelationships:
 
         # Act - Create constraints in both directions
         constraint_a_to_b = ShiftConstraint(
-            shift_id=shift_a.id,
-            linked_shift_id=shift_b.id,
-            within_last_shifts=1
+            shift_id=shift_a.id, linked_shift_id=shift_b.id, within_last_shifts=1
         )
         constraint_b_to_a = ShiftConstraint(
-            shift_id=shift_b.id,
-            linked_shift_id=shift_a.id,
-            within_last_shifts=1
+            shift_id=shift_b.id, linked_shift_id=shift_a.id, within_last_shifts=1
         )
         session.add_all([constraint_a_to_b, constraint_b_to_a])
         session.commit()
@@ -262,9 +243,7 @@ class TestShiftConstraintRelationships:
 
         # Act - Create constraint where shift links to itself
         constraint = ShiftConstraint(
-            shift_id=shift.id,
-            linked_shift_id=shift.id,
-            within_last_shifts=2
+            shift_id=shift.id, linked_shift_id=shift.id, within_last_shifts=2
         )
         session.add(constraint)
         session.commit()
@@ -272,7 +251,7 @@ class TestShiftConstraintRelationships:
         # Assert
         statement = select(ShiftConstraint).where(
             ShiftConstraint.shift_id == shift.id,
-            ShiftConstraint.linked_shift_id == shift.id
+            ShiftConstraint.linked_shift_id == shift.id,
         )
         result = session.exec(statement).first()
         assert result is not None
@@ -292,31 +271,31 @@ class TestShiftConstraintValidation:
 
         # Test zero value
         with pytest.raises(Exception):  # Pydantic ValidationError
-            session.add(ShiftConstraint(
-                shift_id=shift1.id,
-                linked_shift_id=shift2.id,
-                within_last_shifts=0
-            ))
+            session.add(
+                ShiftConstraint(
+                    shift_id=shift1.id, linked_shift_id=shift2.id, within_last_shifts=0
+                )
+            )
             session.commit()
 
         # Test negative value
         with pytest.raises(Exception):  # Pydantic ValidationError
-            session.add(ShiftConstraint(
-                shift_id=shift1.id,
-                linked_shift_id=shift2.id,
-                within_last_shifts=-1
-            ))
+            session.add(
+                ShiftConstraint(
+                    shift_id=shift1.id, linked_shift_id=shift2.id, within_last_shifts=-1
+                )
+            )
             session.commit()
 
-    def test_shift_constraint_foreign_key_shift_id(self, session: Session, shift_factory):
+    def test_shift_constraint_foreign_key_shift_id(
+        self, session: Session, shift_factory
+    ):
         """Test that shift_id must reference an existing shift."""
         shift = shift_factory()
         non_existent_id = uuid.uuid4()
 
         constraint = ShiftConstraint(
-            shift_id=non_existent_id,
-            linked_shift_id=shift.id,
-            within_last_shifts=1
+            shift_id=non_existent_id, linked_shift_id=shift.id, within_last_shifts=1
         )
         session.add(constraint)
         with pytest.raises(Exception):  # Foreign key constraint
@@ -330,9 +309,7 @@ class TestShiftConstraintValidation:
         non_existent_id = uuid.uuid4()
 
         constraint = ShiftConstraint(
-            shift_id=shift.id,
-            linked_shift_id=non_existent_id,
-            within_last_shifts=1
+            shift_id=shift.id, linked_shift_id=non_existent_id, within_last_shifts=1
         )
         session.add(constraint)
         with pytest.raises(Exception):  # Foreign key constraint
@@ -352,14 +329,10 @@ class TestShiftConstraintQueryPatterns:
         linked2 = shift_factory(description="Linked 2")
 
         shift_constraint_factory(
-            shift_id=primary.id,
-            linked_shift_id=linked1.id,
-            within_last_shifts=1
+            shift_id=primary.id, linked_shift_id=linked1.id, within_last_shifts=1
         )
         shift_constraint_factory(
-            shift_id=primary.id,
-            linked_shift_id=linked2.id,
-            within_last_shifts=2
+            shift_id=primary.id, linked_shift_id=linked2.id, within_last_shifts=2
         )
 
         # Create constraint for different shift (should not be returned)
@@ -367,7 +340,9 @@ class TestShiftConstraintQueryPatterns:
         shift_constraint_factory(shift_id=other.id, linked_shift_id=linked1.id)
 
         # Act
-        statement = select(ShiftConstraint).where(ShiftConstraint.shift_id == primary.id)
+        statement = select(ShiftConstraint).where(
+            ShiftConstraint.shift_id == primary.id
+        )
         results = session.exec(statement).all()
 
         # Assert
@@ -386,7 +361,9 @@ class TestShiftConstraintQueryPatterns:
         shift_constraint_factory(within_last_shifts=3)
 
         # Act
-        statement = select(ShiftConstraint).where(ShiftConstraint.within_last_shifts == 1)
+        statement = select(ShiftConstraint).where(
+            ShiftConstraint.within_last_shifts == 1
+        )
         results = session.exec(statement).all()
 
         # Assert
@@ -404,7 +381,9 @@ class TestShiftConstraintQueryPatterns:
         shift_constraint_factory(within_last_shifts=5)
 
         # Act - Find constraints with within_last_shifts >= 3
-        statement = select(ShiftConstraint).where(ShiftConstraint.within_last_shifts >= 3)
+        statement = select(ShiftConstraint).where(
+            ShiftConstraint.within_last_shifts >= 3
+        )
         results = session.exec(statement).all()
 
         # Assert

@@ -23,10 +23,7 @@ class TestMemberRequestCRUD:
 
         # Act
         request = MemberRequest(
-            start_at=start,
-            end_at=end,
-            member_id=member.id,
-            description="Vacation"
+            start_at=start, end_at=end, member_id=member.id, description="Vacation"
         )
         session.add(request)
         session.commit()
@@ -48,9 +45,7 @@ class TestMemberRequestCRUD:
         start = datetime(2025, 3, 10, 9, 0)
         end = datetime(2025, 3, 12, 17, 0)
         request = member_request_factory(
-            start_at=start,
-            end_at=end,
-            description="Doctor appointment"
+            start_at=start, end_at=end, description="Doctor appointment"
         )
 
         # Assert
@@ -141,8 +136,7 @@ class TestMemberRequestRelationships:
         # Arrange
         member = member_factory(name="Jane Doe", email="jane@example.com")
         request = member_request_factory(
-            member_id=member.id,
-            description="Jane's vacation"
+            member_id=member.id, description="Jane's vacation"
         )
 
         # Act
@@ -165,19 +159,19 @@ class TestMemberRequestRelationships:
             member_id=member.id,
             start_at=datetime(2025, 2, 1),
             end_at=datetime(2025, 2, 3),
-            description="February vacation"
+            description="February vacation",
         )
         member_request_factory(
             member_id=member.id,
             start_at=datetime(2025, 3, 15),
             end_at=datetime(2025, 3, 16),
-            description="March appointment"
+            description="March appointment",
         )
         member_request_factory(
             member_id=member.id,
             start_at=datetime(2025, 4, 20),
             end_at=datetime(2025, 4, 22),
-            description="April conference"
+            description="April conference",
         )
 
         # Act
@@ -187,7 +181,11 @@ class TestMemberRequestRelationships:
         # Assert
         assert len(results) == 3
         descriptions = {r.description for r in results}
-        assert descriptions == {"February vacation", "March appointment", "April conference"}
+        assert descriptions == {
+            "February vacation",
+            "March appointment",
+            "April conference",
+        }
 
     def test_query_requests_by_member(
         self, session: Session, member_factory, member_request_factory
@@ -216,7 +214,9 @@ class TestMemberRequestRelationships:
         """Test that deleting a request doesn't delete the associated member."""
         # Arrange
         member = member_factory(name="Test Member", email="test@example.com")
-        request = member_request_factory(member_id=member.id, description="Test request")
+        request = member_request_factory(
+            member_id=member.id, description="Test request"
+        )
 
         # Act
         session.delete(request)
@@ -266,9 +266,7 @@ class TestMemberRequestConstraints:
         end = start + timedelta(days=1)
 
         request = MemberRequest(
-            start_at=start,
-            end_at=end,
-            member_id=non_existent_member_id
+            start_at=start, end_at=end, member_id=non_existent_member_id
         )
         session.add(request)
         with pytest.raises(Exception):  # Foreign key constraint
@@ -286,23 +284,23 @@ class TestMemberRequestQueryPatterns:
         member_request_factory(
             start_at=datetime(2025, 1, 10),
             end_at=datetime(2025, 1, 12),
-            description="Early January"
+            description="Early January",
         )
         member_request_factory(
             start_at=datetime(2025, 1, 20),
             end_at=datetime(2025, 1, 22),
-            description="Mid January"
+            description="Mid January",
         )
         member_request_factory(
             start_at=datetime(2025, 2, 1),
             end_at=datetime(2025, 2, 3),
-            description="Early February"
+            description="Early February",
         )
 
         # Act - Query requests starting in January
         statement = select(MemberRequest).where(
             MemberRequest.start_at >= datetime(2025, 1, 1),
-            MemberRequest.start_at < datetime(2025, 2, 1)
+            MemberRequest.start_at < datetime(2025, 2, 1),
         )
         results = session.exec(statement).all()
 

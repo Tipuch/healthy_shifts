@@ -25,7 +25,7 @@ class TestShiftCRUD:
             seconds_since_midnight=seconds_9am,
             duration_seconds=duration_8h,
             days=["1", "3"],  # Monday, Wednesday
-            description="Morning shift"
+            description="Morning shift",
         )
         session.add(shift)
         session.commit()
@@ -48,7 +48,7 @@ class TestShiftCRUD:
             seconds_since_midnight=32400,  # 9:00 AM
             duration_seconds=28800,  # 8 hours
             days=["1", "2", "3", "4", "5"],  # Weekdays
-            description="Weekday morning shift"
+            description="Weekday morning shift",
         )
 
         # Assert
@@ -79,7 +79,7 @@ class TestShiftCRUD:
             seconds_since_midnight=14400,  # 4:00 AM
             duration_seconds=21600,  # 6 hours
             days=["0", "6"],  # Sunday, Saturday (weekend)
-            description="Weekend early shift"
+            description="Weekend early shift",
         )
 
         # Act
@@ -117,7 +117,7 @@ class TestShiftCRUD:
             seconds_since_midnight=28800,  # 8:00 AM
             duration_seconds=14400,  # 4 hours
             days=["1"],
-            description="Old description"
+            description="Old description",
         )
         original_id = shift.id
 
@@ -306,21 +306,21 @@ class TestShiftQueryPatterns:
         # Arrange - Create morning, afternoon, and evening shifts
         shift_factory(
             seconds_since_midnight=28800,  # 8:00 AM
-            description="Morning"
+            description="Morning",
         )
         shift_factory(
             seconds_since_midnight=43200,  # 12:00 PM
-            description="Afternoon"
+            description="Afternoon",
         )
         shift_factory(
             seconds_since_midnight=61200,  # 5:00 PM
-            description="Evening"
+            description="Evening",
         )
 
         # Act - Query shifts starting between 8 AM and 1 PM
         statement = select(Shift).where(
             Shift.seconds_since_midnight >= 28800,  # >= 8:00 AM
-            Shift.seconds_since_midnight <= 46800   # <= 1:00 PM
+            Shift.seconds_since_midnight <= 46800,  # <= 1:00 PM
         )
         results = session.exec(statement).all()
 

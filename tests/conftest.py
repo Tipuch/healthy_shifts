@@ -14,8 +14,15 @@ from typing import AsyncGenerator
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
 
-from models import (Member, MemberGroup, MemberRequest, MemberShiftScheduled,
-                    Shift, ShiftConstraint, ShiftScheduled)
+from models import (
+    Member,
+    MemberGroup,
+    MemberRequest,
+    MemberShiftScheduled,
+    Shift,
+    ShiftConstraint,
+    ShiftScheduled,
+)
 
 
 @pytest.fixture(scope="function")
@@ -68,14 +75,9 @@ def member_group_factory(session: Session):
     Usage:
         member_group = member_group_factory(name="Engineering")
     """
-    def _create_member_group(
-        name: str = "Test Group",
-        **kwargs
-    ) -> MemberGroup:
-        member_group = MemberGroup(
-            name=name,
-            **kwargs
-        )
+
+    def _create_member_group(name: str = "Test Group", **kwargs) -> MemberGroup:
+        member_group = MemberGroup(name=name, **kwargs)
         session.add(member_group)
         session.commit()
         session.refresh(member_group)
@@ -92,11 +94,12 @@ def member_factory(session: Session, member_group_factory):
     Usage:
         member = member_factory(name="John Doe", email="john@example.com")
     """
+
     def _create_member(
         name: str = "Test Member",
         email: str | None = None,
         member_group_id: uuid.UUID | None = None,
-        **kwargs
+        **kwargs,
     ) -> Member:
         # Auto-create a member group if not provided
         if member_group_id is None:
@@ -108,10 +111,7 @@ def member_factory(session: Session, member_group_factory):
             email = f"test_{uuid.uuid4().hex[:8]}@example.com"
 
         member = Member(
-            name=name,
-            email=email,
-            member_group_id=member_group_id,
-            **kwargs
+            name=name, email=email, member_group_id=member_group_id, **kwargs
         )
         session.add(member)
         session.commit()
@@ -133,12 +133,13 @@ def shift_factory(session: Session):
             days=["1", "2", "3"]  # Mon, Tue, Wed
         )
     """
+
     def _create_shift(
         seconds_since_midnight: int = 0,
         duration_seconds: int = 3600,
         days: list[str] | None = None,
         description: str = "",
-        **kwargs
+        **kwargs,
     ) -> Shift:
         if days is None:
             days = ["1"]  # Default to Monday
@@ -148,7 +149,7 @@ def shift_factory(session: Session):
             duration_seconds=duration_seconds,
             days=days,
             description=description,
-            **kwargs
+            **kwargs,
         )
         session.add(shift)
         session.commit()
@@ -169,12 +170,13 @@ def shift_scheduled_factory(session: Session, shift_factory):
             end_at=datetime(2025, 1, 20, 17, 0)
         )
     """
+
     def _create_shift_scheduled(
         start_at: datetime | None = None,
         end_at: datetime | None = None,
         shift_id: uuid.UUID | None = None,
         description: str = "",
-        **kwargs
+        **kwargs,
     ) -> ShiftScheduled:
         # Auto-create a shift if not provided
         if shift_id is None:
@@ -194,7 +196,7 @@ def shift_scheduled_factory(session: Session, shift_factory):
             end_at=end_at,
             shift_id=shift_id,
             description=description,
-            **kwargs
+            **kwargs,
         )
         session.add(shift_scheduled)
         session.commit()
@@ -216,12 +218,13 @@ def member_request_factory(session: Session, member_factory):
             description="Vacation"
         )
     """
+
     def _create_member_request(
         start_at: datetime | None = None,
         end_at: datetime | None = None,
         member_id: uuid.UUID | None = None,
         description: str = "",
-        **kwargs
+        **kwargs,
     ) -> MemberRequest:
         # Auto-create a member if not provided
         if member_id is None:
@@ -241,7 +244,7 @@ def member_request_factory(session: Session, member_factory):
             end_at=end_at,
             member_id=member_id,
             description=description,
-            **kwargs
+            **kwargs,
         )
         session.add(member_request)
         session.commit()
@@ -263,11 +266,12 @@ def shift_constraint_factory(session: Session, shift_factory):
             within_last_shifts=2
         )
     """
+
     def _create_shift_constraint(
         shift_id: uuid.UUID | None = None,
         linked_shift_id: uuid.UUID | None = None,
         within_last_shifts: int = 1,
-        **kwargs
+        **kwargs,
     ) -> ShiftConstraint:
         # Auto-create shifts if not provided
         if shift_id is None:
@@ -282,7 +286,7 @@ def shift_constraint_factory(session: Session, shift_factory):
             shift_id=shift_id,
             linked_shift_id=linked_shift_id,
             within_last_shifts=within_last_shifts,
-            **kwargs
+            **kwargs,
         )
         session.add(constraint)
         session.commit()
@@ -293,7 +297,9 @@ def shift_constraint_factory(session: Session, shift_factory):
 
 
 @pytest.fixture
-def member_shift_scheduled_factory(session: Session, member_factory, shift_scheduled_factory):
+def member_shift_scheduled_factory(
+    session: Session, member_factory, shift_scheduled_factory
+):
     """
     Factory fixture for creating MemberShiftScheduled link instances.
 
@@ -303,10 +309,11 @@ def member_shift_scheduled_factory(session: Session, member_factory, shift_sched
             shift_scheduled_id=scheduled_shift.id
         )
     """
+
     def _create_member_shift_scheduled(
         member_id: uuid.UUID | None = None,
         shift_scheduled_id: uuid.UUID | None = None,
-        **kwargs
+        **kwargs,
     ) -> MemberShiftScheduled:
         # Auto-create member and shift if not provided
         if member_id is None:
@@ -318,9 +325,7 @@ def member_shift_scheduled_factory(session: Session, member_factory, shift_sched
             shift_scheduled_id = scheduled.id
 
         link = MemberShiftScheduled(
-            member_id=member_id,
-            shift_scheduled_id=shift_scheduled_id,
-            **kwargs
+            member_id=member_id, shift_scheduled_id=shift_scheduled_id, **kwargs
         )
         session.add(link)
         session.commit()

@@ -7,12 +7,14 @@ from sqlmodel import Field, PrimaryKeyConstraint, SQLModel
 class MemberShiftScheduled(SQLModel, table=True):
     __tablename__ = "member_shift_scheduled"
 
-    member_id: uuid.UUID = Field(foreign_key="member.id", primary_key=True, nullable=False)
-    shift_scheduled_id: uuid.UUID = Field(foreign_key="shift_scheduled.id", primary_key=True, nullable=False)
-
-    __table_args__ = (
-        PrimaryKeyConstraint("member_id", "shift_scheduled_id"),
+    member_id: uuid.UUID = Field(
+        foreign_key="member.id", primary_key=True, nullable=False
     )
+    shift_scheduled_id: uuid.UUID = Field(
+        foreign_key="shift_scheduled.id", primary_key=True, nullable=False
+    )
+
+    __table_args__ = (PrimaryKeyConstraint("member_id", "shift_scheduled_id"),)
 
 
 class ShiftScheduled(SQLModel, table=True):
@@ -25,5 +27,7 @@ class ShiftScheduled(SQLModel, table=True):
     )
     start_at: datetime = Field(nullable=False)
     end_at: datetime = Field(nullable=False)
-    description: str = Field(default='', nullable=False)
-    shift_id: uuid.UUID = Field(index=True, foreign_key="shift.id", nullable=False, min_length=1)
+    description: str = Field(default="", nullable=False)
+    shift_id: uuid.UUID = Field(
+        index=True, foreign_key="shift.id", nullable=False, min_length=1
+    )

@@ -23,7 +23,7 @@ class TestMemberCRUD:
         member = Member(
             name="John Doe",
             email="john.doe@example.com",
-            member_group_id=member_group.id
+            member_group_id=member_group.id,
         )
         session.add(member)
         session.commit()
@@ -119,14 +119,16 @@ class TestMemberCRUD:
 class TestMemberRelationships:
     """Test suite for Member relationships with other models."""
 
-    def test_member_belongs_to_member_group(self, session: Session, member_group_factory, member_factory):
+    def test_member_belongs_to_member_group(
+        self, session: Session, member_group_factory, member_factory
+    ):
         """Test that a member is associated with a member group."""
         # Arrange
         member_group = member_group_factory(name="Sales Team")
         member = member_factory(
             name="Sales Person",
             email="sales@example.com",
-            member_group_id=member_group.id
+            member_group_id=member_group.id,
         )
 
         # Act
@@ -137,13 +139,21 @@ class TestMemberRelationships:
         assert retrieved_member is not None
         assert retrieved_member.member_group_id == member_group.id
 
-    def test_member_group_can_have_multiple_members(self, session: Session, member_group_factory, member_factory):
+    def test_member_group_can_have_multiple_members(
+        self, session: Session, member_group_factory, member_factory
+    ):
         """Test that a member group can have multiple members."""
         # Arrange
         member_group = member_group_factory(name="Development Team")
-        member_factory(name="Dev 1", email="dev1@example.com", member_group_id=member_group.id)
-        member_factory(name="Dev 2", email="dev2@example.com", member_group_id=member_group.id)
-        member_factory(name="Dev 3", email="dev3@example.com", member_group_id=member_group.id)
+        member_factory(
+            name="Dev 1", email="dev1@example.com", member_group_id=member_group.id
+        )
+        member_factory(
+            name="Dev 2", email="dev2@example.com", member_group_id=member_group.id
+        )
+        member_factory(
+            name="Dev 3", email="dev3@example.com", member_group_id=member_group.id
+        )
 
         # Act
         statement = select(Member).where(Member.member_group_id == member_group.id)
@@ -154,15 +164,23 @@ class TestMemberRelationships:
         member_names = {member.name for member in members}
         assert member_names == {"Dev 1", "Dev 2", "Dev 3"}
 
-    def test_query_members_by_group(self, session: Session, member_group_factory, member_factory):
+    def test_query_members_by_group(
+        self, session: Session, member_group_factory, member_factory
+    ):
         """Test querying members by their member group."""
         # Arrange
         group1 = member_group_factory(name="Group 1")
         group2 = member_group_factory(name="Group 2")
 
-        member_factory(name="Member 1", email="m1@example.com", member_group_id=group1.id)
-        member_factory(name="Member 2", email="m2@example.com", member_group_id=group1.id)
-        member_factory(name="Member 3", email="m3@example.com", member_group_id=group2.id)
+        member_factory(
+            name="Member 1", email="m1@example.com", member_group_id=group1.id
+        )
+        member_factory(
+            name="Member 2", email="m2@example.com", member_group_id=group1.id
+        )
+        member_factory(
+            name="Member 3", email="m3@example.com", member_group_id=group2.id
+        )
 
         # Act
         statement = select(Member).where(Member.member_group_id == group1.id)
@@ -183,7 +201,7 @@ class TestMemberConstraints:
         member1 = Member(
             name="Member 1",
             email="duplicate@example.com",
-            member_group_id=member_group.id
+            member_group_id=member_group.id,
         )
         session.add(member1)
         session.commit()
@@ -192,7 +210,7 @@ class TestMemberConstraints:
         member2 = Member(
             name="Member 2",
             email="duplicate@example.com",
-            member_group_id=member_group.id
+            member_group_id=member_group.id,
         )
         session.add(member2)
         with pytest.raises(Exception):  # SQLite IntegrityError
@@ -205,9 +223,10 @@ class TestMemberConstraints:
 
         # Act & Assert
         with pytest.raises(Exception):
-            session.add(Member(email="test@example.com", member_group_id=member_group.id))
+            session.add(
+                Member(email="test@example.com", member_group_id=member_group.id)
+            )
             session.commit()
-
 
     def test_member_requires_email(self, session: Session, member_group_factory):
         """Test that a member requires an email field."""
@@ -226,7 +245,13 @@ class TestMemberConstraints:
 
         # Act & Assert
         with pytest.raises(Exception):
-            session.add(Member(name="Test Member", email="testexample.com", member_group_id=member_group.id))
+            session.add(
+                Member(
+                    name="Test Member",
+                    email="testexample.com",
+                    member_group_id=member_group.id,
+                )
+            )
             session.commit()
 
     def test_member_requires_member_group_id(self, session: Session):
@@ -245,7 +270,7 @@ class TestMemberConstraints:
         member = Member(
             name="Test Member",
             email="test@example.com",
-            member_group_id=non_existent_group_id
+            member_group_id=non_existent_group_id,
         )
         session.add(member)
         with pytest.raises(Exception):  # Foreign key constraint violation

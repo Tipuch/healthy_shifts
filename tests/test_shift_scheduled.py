@@ -26,7 +26,7 @@ class TestShiftScheduledCRUD:
             start_at=start,
             end_at=end,
             shift_id=shift.id,
-            description="Scheduled instance"
+            description="Scheduled instance",
         )
         session.add(scheduled)
         session.commit()
@@ -48,9 +48,7 @@ class TestShiftScheduledCRUD:
         start = datetime(2025, 2, 15, 8, 0)
         end = datetime(2025, 2, 15, 16, 0)
         scheduled = shift_scheduled_factory(
-            start_at=start,
-            end_at=end,
-            description="Factory created"
+            start_at=start, end_at=end, description="Factory created"
         )
 
         # Assert
@@ -133,13 +131,14 @@ class TestShiftScheduledCRUD:
 class TestShiftScheduledRelationships:
     """Test suite for ShiftScheduled relationships."""
 
-    def test_shift_scheduled_belongs_to_shift(self, session: Session, shift_factory, shift_scheduled_factory):
+    def test_shift_scheduled_belongs_to_shift(
+        self, session: Session, shift_factory, shift_scheduled_factory
+    ):
         """Test that a scheduled shift is linked to a shift template."""
         # Arrange
         shift_template = shift_factory(description="Template")
         scheduled = shift_scheduled_factory(
-            shift_id=shift_template.id,
-            description="Instance"
+            shift_id=shift_template.id, description="Instance"
         )
 
         # Act
@@ -164,8 +163,7 @@ class TestShiftScheduledMemberAssignment:
 
         # Act
         link = MemberShiftScheduled(
-            member_id=member.id,
-            shift_scheduled_id=scheduled.id
+            member_id=member.id, shift_scheduled_id=scheduled.id
         )
         session.add(link)
         session.commit()
@@ -189,9 +187,15 @@ class TestShiftScheduledMemberAssignment:
         scheduled = shift_scheduled_factory(description="Team Shift")
 
         # Act
-        session.add(MemberShiftScheduled(member_id=member1.id, shift_scheduled_id=scheduled.id))
-        session.add(MemberShiftScheduled(member_id=member2.id, shift_scheduled_id=scheduled.id))
-        session.add(MemberShiftScheduled(member_id=member3.id, shift_scheduled_id=scheduled.id))
+        session.add(
+            MemberShiftScheduled(member_id=member1.id, shift_scheduled_id=scheduled.id)
+        )
+        session.add(
+            MemberShiftScheduled(member_id=member2.id, shift_scheduled_id=scheduled.id)
+        )
+        session.add(
+            MemberShiftScheduled(member_id=member3.id, shift_scheduled_id=scheduled.id)
+        )
         session.commit()
 
         # Assert
@@ -214,9 +218,15 @@ class TestShiftScheduledMemberAssignment:
         shift3 = shift_scheduled_factory(description="Evening")
 
         # Act
-        session.add(MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift1.id))
-        session.add(MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift2.id))
-        session.add(MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift3.id))
+        session.add(
+            MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift1.id)
+        )
+        session.add(
+            MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift2.id)
+        )
+        session.add(
+            MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift3.id)
+        )
         session.commit()
 
         # Assert
@@ -233,7 +243,9 @@ class TestShiftScheduledMemberAssignment:
         # Arrange
         member = member_factory(name="Temp Worker", email="temp@example.com")
         scheduled = shift_scheduled_factory(description="Temporary Assignment")
-        link = MemberShiftScheduled(member_id=member.id, shift_scheduled_id=scheduled.id)
+        link = MemberShiftScheduled(
+            member_id=member.id, shift_scheduled_id=scheduled.id
+        )
         session.add(link)
         session.commit()
 
@@ -244,7 +256,7 @@ class TestShiftScheduledMemberAssignment:
         # Assert
         statement = select(MemberShiftScheduled).where(
             MemberShiftScheduled.member_id == member.id,
-            MemberShiftScheduled.shift_scheduled_id == scheduled.id
+            MemberShiftScheduled.shift_scheduled_id == scheduled.id,
         )
         result = session.exec(statement).first()
         assert result is None
@@ -287,9 +299,7 @@ class TestShiftScheduledConstraints:
         end = start + timedelta(hours=8)
 
         scheduled = ShiftScheduled(
-            start_at=start,
-            end_at=end,
-            shift_id=non_existent_shift_id
+            start_at=start, end_at=end, shift_id=non_existent_shift_id
         )
         session.add(scheduled)
         with pytest.raises(Exception):  # Foreign key constraint
@@ -307,23 +317,23 @@ class TestShiftScheduledQueryPatterns:
         shift_scheduled_factory(
             start_at=datetime(2025, 1, 20, 9, 0),
             end_at=datetime(2025, 1, 20, 17, 0),
-            description="Jan 20"
+            description="Jan 20",
         )
         shift_scheduled_factory(
             start_at=datetime(2025, 1, 25, 9, 0),
             end_at=datetime(2025, 1, 25, 17, 0),
-            description="Jan 25"
+            description="Jan 25",
         )
         shift_scheduled_factory(
             start_at=datetime(2025, 2, 1, 9, 0),
             end_at=datetime(2025, 2, 1, 17, 0),
-            description="Feb 1"
+            description="Feb 1",
         )
 
         # Act - Query shifts in January
         statement = select(ShiftScheduled).where(
             ShiftScheduled.start_at >= datetime(2025, 1, 1),
-            ShiftScheduled.start_at < datetime(2025, 2, 1)
+            ShiftScheduled.start_at < datetime(2025, 2, 1),
         )
         results = session.exec(statement).all()
 
@@ -341,24 +351,23 @@ class TestShiftScheduledQueryPatterns:
         shift_scheduled_factory(
             start_at=datetime(2025, 1, 20, 9, 0),
             end_at=datetime(2025, 1, 20, 17, 0),
-            description="Target day morning"
+            description="Target day morning",
         )
         shift_scheduled_factory(
             start_at=datetime(2025, 1, 20, 18, 0),
             end_at=datetime(2025, 1, 20, 23, 0),
-            description="Target day evening"
+            description="Target day evening",
         )
         shift_scheduled_factory(
             start_at=datetime(2025, 1, 21, 9, 0),
             end_at=datetime(2025, 1, 21, 17, 0),
-            description="Different day"
+            description="Different day",
         )
 
         # Act
         next_day = target_date + timedelta(days=1)
         statement = select(ShiftScheduled).where(
-            ShiftScheduled.start_at >= target_date,
-            ShiftScheduled.start_at < next_day
+            ShiftScheduled.start_at >= target_date, ShiftScheduled.start_at < next_day
         )
         results = session.exec(statement).all()
 

@@ -23,8 +23,7 @@ class TestMemberShiftScheduledCRUD:
 
         # Act
         link = MemberShiftScheduled(
-            member_id=member.id,
-            shift_scheduled_id=scheduled.id
+            member_id=member.id, shift_scheduled_id=scheduled.id
         )
         session.add(link)
         session.commit()
@@ -55,7 +54,7 @@ class TestMemberShiftScheduledCRUD:
         # Act
         statement = select(MemberShiftScheduled).where(
             MemberShiftScheduled.member_id == created.member_id,
-            MemberShiftScheduled.shift_scheduled_id == created.shift_scheduled_id
+            MemberShiftScheduled.shift_scheduled_id == created.shift_scheduled_id,
         )
         result = session.exec(statement).first()
 
@@ -96,7 +95,7 @@ class TestMemberShiftScheduledCRUD:
         # Assert
         statement = select(MemberShiftScheduled).where(
             MemberShiftScheduled.member_id == member_id,
-            MemberShiftScheduled.shift_scheduled_id == shift_id
+            MemberShiftScheduled.shift_scheduled_id == shift_id,
         )
         result = session.exec(statement).first()
         assert result is None
@@ -115,8 +114,7 @@ class TestMemberShiftScheduledRelationships:
 
         # Act
         link = MemberShiftScheduled(
-            member_id=member.id,
-            shift_scheduled_id=scheduled.id
+            member_id=member.id, shift_scheduled_id=scheduled.id
         )
         session.add(link)
         session.commit()
@@ -140,9 +138,15 @@ class TestMemberShiftScheduledRelationships:
         scheduled = shift_scheduled_factory(description="Team Shift")
 
         # Act
-        link1 = MemberShiftScheduled(member_id=member1.id, shift_scheduled_id=scheduled.id)
-        link2 = MemberShiftScheduled(member_id=member2.id, shift_scheduled_id=scheduled.id)
-        link3 = MemberShiftScheduled(member_id=member3.id, shift_scheduled_id=scheduled.id)
+        link1 = MemberShiftScheduled(
+            member_id=member1.id, shift_scheduled_id=scheduled.id
+        )
+        link2 = MemberShiftScheduled(
+            member_id=member2.id, shift_scheduled_id=scheduled.id
+        )
+        link3 = MemberShiftScheduled(
+            member_id=member3.id, shift_scheduled_id=scheduled.id
+        )
         session.add_all([link1, link2, link3])
         session.commit()
 
@@ -188,7 +192,9 @@ class TestMemberShiftScheduledRelationships:
         # Arrange
         member = member_factory(name="Test Member", email="test@example.com")
         scheduled = shift_scheduled_factory(description="Test Shift")
-        link = MemberShiftScheduled(member_id=member.id, shift_scheduled_id=scheduled.id)
+        link = MemberShiftScheduled(
+            member_id=member.id, shift_scheduled_id=scheduled.id
+        )
         session.add(link)
         session.commit()
 
@@ -209,7 +215,9 @@ class TestMemberShiftScheduledRelationships:
         # Arrange
         member = member_factory(name="Test Member", email="test@example.com")
         scheduled = shift_scheduled_factory(description="Test Shift")
-        link = MemberShiftScheduled(member_id=member.id, shift_scheduled_id=scheduled.id)
+        link = MemberShiftScheduled(
+            member_id=member.id, shift_scheduled_id=scheduled.id
+        )
         session.add(link)
         session.commit()
 
@@ -235,8 +243,7 @@ class TestMemberShiftScheduledConstraints:
         non_existent_member_id = uuid.uuid4()
 
         link = MemberShiftScheduled(
-            member_id=non_existent_member_id,
-            shift_scheduled_id=scheduled.id
+            member_id=non_existent_member_id, shift_scheduled_id=scheduled.id
         )
         session.add(link)
         with pytest.raises(Exception):  # Foreign key constraint
@@ -250,8 +257,7 @@ class TestMemberShiftScheduledConstraints:
         non_existent_shift_id = uuid.uuid4()
 
         link = MemberShiftScheduled(
-            member_id=member.id,
-            shift_scheduled_id=non_existent_shift_id
+            member_id=member.id, shift_scheduled_id=non_existent_shift_id
         )
         session.add(link)
         with pytest.raises(Exception):  # Foreign key constraint
@@ -272,8 +278,12 @@ class TestMemberShiftScheduledQueryPatterns:
         shift_scheduled_factory(description="Shift 3")
 
         # Assign member to shifts 1 and 2
-        session.add(MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift1.id))
-        session.add(MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift2.id))
+        session.add(
+            MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift1.id)
+        )
+        session.add(
+            MemberShiftScheduled(member_id=member.id, shift_scheduled_id=shift2.id)
+        )
         session.commit()
 
         # Act
@@ -298,9 +308,15 @@ class TestMemberShiftScheduledQueryPatterns:
         member3 = member_factory(name="M3", email="m3@example.com")
 
         # Assign members to shift
-        session.add(MemberShiftScheduled(member_id=member1.id, shift_scheduled_id=shift.id))
-        session.add(MemberShiftScheduled(member_id=member2.id, shift_scheduled_id=shift.id))
-        session.add(MemberShiftScheduled(member_id=member3.id, shift_scheduled_id=shift.id))
+        session.add(
+            MemberShiftScheduled(member_id=member1.id, shift_scheduled_id=shift.id)
+        )
+        session.add(
+            MemberShiftScheduled(member_id=member2.id, shift_scheduled_id=shift.id)
+        )
+        session.add(
+            MemberShiftScheduled(member_id=member3.id, shift_scheduled_id=shift.id)
+        )
         session.commit()
 
         # Act
@@ -326,12 +342,22 @@ class TestMemberShiftScheduledQueryPatterns:
         shift3 = shift_scheduled_factory(description="S3")
 
         # Member 1: 3 shifts, Member 2: 1 shift
-        session.add_all([
-            MemberShiftScheduled(member_id=member1.id, shift_scheduled_id=shift1.id),
-            MemberShiftScheduled(member_id=member1.id, shift_scheduled_id=shift2.id),
-            MemberShiftScheduled(member_id=member1.id, shift_scheduled_id=shift3.id),
-            MemberShiftScheduled(member_id=member2.id, shift_scheduled_id=shift1.id),
-        ])
+        session.add_all(
+            [
+                MemberShiftScheduled(
+                    member_id=member1.id, shift_scheduled_id=shift1.id
+                ),
+                MemberShiftScheduled(
+                    member_id=member1.id, shift_scheduled_id=shift2.id
+                ),
+                MemberShiftScheduled(
+                    member_id=member1.id, shift_scheduled_id=shift3.id
+                ),
+                MemberShiftScheduled(
+                    member_id=member2.id, shift_scheduled_id=shift1.id
+                ),
+            ]
+        )
         session.commit()
 
         # Act
