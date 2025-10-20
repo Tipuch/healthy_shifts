@@ -97,9 +97,9 @@ class TestShiftCRUD:
     def test_read_all_shifts(self, session: Session, shift_factory):
         """Test reading multiple shifts."""
         # Arrange
-        shift1 = shift_factory(description="Shift 1")
-        shift2 = shift_factory(description="Shift 2")
-        shift3 = shift_factory(description="Shift 3")
+        shift_factory(description="Shift 1")
+        shift_factory(description="Shift 2")
+        shift_factory(description="Shift 3")
 
         # Act
         statement = select(Shift)

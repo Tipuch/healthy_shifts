@@ -1,6 +1,5 @@
-from models import Member, MemberGroup, MemberRequest, Shift, ShiftConstraint, ShiftScheduled
-from sqlmodel import SQLModel, Session, create_engine
 from sqlalchemy import event
+from sqlmodel import Session, create_engine
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"

@@ -3,7 +3,7 @@ Tests for MemberGroup model CRUD operations.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytest
 from sqlmodel import Session, select
@@ -60,9 +60,9 @@ class TestMemberGroupCRUD:
     def test_read_all_member_groups(self, session: Session, member_group_factory):
         """Test reading multiple member groups."""
         # Arrange
-        group1 = member_group_factory(name="Group 1")
-        group2 = member_group_factory(name="Group 2")
-        group3 = member_group_factory(name="Group 3")
+        member_group_factory(name="Group 1")
+        member_group_factory(name="Group 2")
+        member_group_factory(name="Group 3")
 
         # Act
         statement = select(MemberGroup)

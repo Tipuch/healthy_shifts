@@ -1,7 +1,7 @@
 import uuid
 
-from sqlmodel import SQLModel, Field, PrimaryKeyConstraint
 from sqlalchemy.orm import validates
+from sqlmodel import Field, PrimaryKeyConstraint, SQLModel
 
 
 class ShiftConstraint(SQLModel, table=True):

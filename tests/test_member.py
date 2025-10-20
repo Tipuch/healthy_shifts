@@ -8,7 +8,7 @@ from datetime import datetime
 import pytest
 from sqlmodel import Session, select
 
-from models import Member, MemberGroup
+from models import Member
 
 
 class TestMemberCRUD:

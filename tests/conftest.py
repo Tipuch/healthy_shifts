@@ -7,29 +7,15 @@ This module provides:
 - Factory fixtures for creating test data
 """
 
-import sys
-from pathlib import Path
-
-# Add project root to Python path for imports
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
 
 import pytest
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 
-from models import (
-    Member,
-    MemberGroup,
-    MemberRequest,
-    Shift,
-    ShiftConstraint,
-    ShiftScheduled,
-    MemberShiftScheduled,
-)
+from models import (Member, MemberGroup, MemberRequest, MemberShiftScheduled,
+                    Shift, ShiftConstraint, ShiftScheduled)
 
 
 @pytest.fixture(scope="function")

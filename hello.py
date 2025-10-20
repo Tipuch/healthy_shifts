@@ -1,4 +1,4 @@
-from db import engine, SQLModel
+from db import SQLModel, engine
 
 
 def main():

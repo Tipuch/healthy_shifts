@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlmodel import SQLModel, Field, PrimaryKeyConstraint
+from sqlmodel import Field, PrimaryKeyConstraint, SQLModel
 
 
 class MemberShiftScheduled(SQLModel, table=True):

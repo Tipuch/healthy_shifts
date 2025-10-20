@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timezone
-from sqlmodel import SQLModel, Field
+
+from sqlmodel import Field, SQLModel
 
 
 class MemberRequest(SQLModel, table=True):

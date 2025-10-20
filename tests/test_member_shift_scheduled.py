@@ -7,7 +7,7 @@ import uuid
 import pytest
 from sqlmodel import Session, select
 
-from models import MemberShiftScheduled, Member, ShiftScheduled
+from models import Member, MemberShiftScheduled, ShiftScheduled
 
 
 class TestMemberShiftScheduledCRUD:
@@ -69,9 +69,9 @@ class TestMemberShiftScheduledCRUD:
     ):
         """Test reading multiple assignments."""
         # Arrange
-        link1 = member_shift_scheduled_factory()
-        link2 = member_shift_scheduled_factory()
-        link3 = member_shift_scheduled_factory()
+        member_shift_scheduled_factory()
+        member_shift_scheduled_factory()
+        member_shift_scheduled_factory()
 
         # Act
         statement = select(MemberShiftScheduled)

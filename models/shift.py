@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlmodel import SQLModel, Field, Column, JSON
 from sqlalchemy.orm import validates
+from sqlmodel import JSON, Column, Field, SQLModel
 
 
 class Shift(SQLModel, table=True):

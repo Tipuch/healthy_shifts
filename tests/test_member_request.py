@@ -3,12 +3,12 @@ Tests for MemberRequest model CRUD operations and relationships.
 """
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlmodel import Session, select
 
-from models import MemberRequest, Member
+from models import Member, MemberRequest
 
 
 class TestMemberRequestCRUD:
@@ -80,9 +80,9 @@ class TestMemberRequestCRUD:
     def test_read_all_member_requests(self, session: Session, member_request_factory):
         """Test reading multiple member requests."""
         # Arrange
-        r1 = member_request_factory(description="Request 1")
-        r2 = member_request_factory(description="Request 2")
-        r3 = member_request_factory(description="Request 3")
+        member_request_factory(description="Request 1")
+        member_request_factory(description="Request 2")
+        member_request_factory(description="Request 3")
 
         # Act
         statement = select(MemberRequest)
@@ -161,19 +161,19 @@ class TestMemberRequestRelationships:
         member = member_factory(name="Busy Member", email="busy@example.com")
 
         # Create multiple requests for the same member
-        request1 = member_request_factory(
+        member_request_factory(
             member_id=member.id,
             start_at=datetime(2025, 2, 1),
             end_at=datetime(2025, 2, 3),
             description="February vacation"
         )
-        request2 = member_request_factory(
+        member_request_factory(
             member_id=member.id,
             start_at=datetime(2025, 3, 15),
             end_at=datetime(2025, 3, 16),
             description="March appointment"
         )
-        request3 = member_request_factory(
+        member_request_factory(
             member_id=member.id,
             start_at=datetime(2025, 4, 20),
             end_at=datetime(2025, 4, 22),

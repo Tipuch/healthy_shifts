@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlmodel import SQLModel, Field
 from sqlalchemy.orm import validates
+from sqlmodel import Field, SQLModel
 
 
 class Member(SQLModel, table=True):

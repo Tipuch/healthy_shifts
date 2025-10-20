@@ -3,12 +3,12 @@ Tests for ShiftScheduled model CRUD operations and relationships.
 """
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlmodel import Session, select
 
-from models import Shift, ShiftScheduled, Member, MemberShiftScheduled
+from models import MemberShiftScheduled, ShiftScheduled
 
 
 class TestShiftScheduledCRUD:

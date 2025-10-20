@@ -7,7 +7,7 @@ import uuid
 import pytest
 from sqlmodel import Session, select
 
-from models import ShiftConstraint, Shift
+from models import ShiftConstraint
 
 
 class TestShiftConstraintCRUD:
