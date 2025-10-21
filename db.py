@@ -1,5 +1,6 @@
 from sqlalchemy import event
-from sqlmodel import Session, create_engine
+# noinspection PyUnusedImports
+from sqlmodel import SQLModel, Session, create_engine
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
