@@ -1,8 +1,14 @@
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import validates
-from sqlmodel import JSON, Column, Field, SQLModel
+from sqlmodel import JSON, Column, Field, Relationship, SQLModel
+
+from .member_group import MemberGroupShift
+
+if TYPE_CHECKING:
+    from .member_group import MemberGroup
 
 
 class Shift(SQLModel, table=True):
@@ -17,6 +23,10 @@ class Shift(SQLModel, table=True):
     # 0 Sunday -> 6 Saturday
     days: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     description: str = Field(default="", nullable=False)
+
+    member_groups: list["MemberGroup"] = Relationship(
+        back_populates="shifts", link_model=MemberGroupShift
+    )
 
     @validates("duration_seconds")
     def validate_duration_seconds(self, _, duration_seconds):

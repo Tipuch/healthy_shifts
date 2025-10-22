@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlmodel import select
-from models import Member, Shift, ShiftConstraint
+from models import Member, Shift, ShiftConstraint, MemberGroupShift
 from db import Session, engine
 from ortools.sat.python import cp_model
 
@@ -52,12 +52,19 @@ def schedule_shifts(start: datetime, end: datetime):
                         <= 1
                     )
 
-    # TODO implement this for member groups
-    # Define which members can work which shifts
-    # default to everyone's in every shift atm
-    shift_eligibility = {
-        shift_key: list(members_dict.keys()) for shift_key in shifts_dict.keys()
-    }
+    with Session(engine) as session:
+        shift_eligibility = {
+            shift_key: [
+                member_key
+                for member_key, member in members_dict.items()
+                if session.exec(
+                    select(MemberGroupShift)
+                    .where(MemberGroupShift.member_group_id == member.member_group_id)
+                    .where(MemberGroupShift.shift_id == shift.id)
+                ).first()
+            ]
+            for shift_key, shift in shifts_dict.items()
+        }
 
     # Constraint: members can only work shifts they're eligible for
     for n in all_members:
