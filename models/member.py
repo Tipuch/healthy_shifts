@@ -1,8 +1,13 @@
 import uuid
 from datetime import datetime, timezone
 
+from typing import TYPE_CHECKING
 from sqlalchemy.orm import validates
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
+
+
+if TYPE_CHECKING:
+    from .member_request import MemberRequest
 
 
 class Member(SQLModel, table=True):
@@ -18,6 +23,7 @@ class Member(SQLModel, table=True):
     member_group_id: uuid.UUID = Field(
         index=True, foreign_key="member_group.id", nullable=False, min_length=1
     )
+    requests: list["MemberRequest"] = Relationship(back_populates="member")
 
     @validates("email")
     def validate_email(self, _, address):

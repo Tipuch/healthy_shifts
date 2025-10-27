@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+import random
 from db import SQLModel, engine, Session
-from models import Member, MemberGroup, MemberGroupShift, Shift, ShiftConstraint
+from models import Member, MemberGroup, MemberGroupShift, MemberRequest, Shift, ShiftConstraint
 from services.schedule_service import schedule_shifts
 
 
@@ -77,6 +78,31 @@ def main():
             session.add(member)
 
         session.commit()
+
+        # Create dummy vacation requests (single-day time-off)
+        # Select 2-3 random members for vacation requests
+        num_requests = random.randint(2, 3)
+        selected_members = random.sample(members, num_requests)
+
+        start_date = datetime.now()
+
+        for member in selected_members:
+            # Random day within the 30-day scheduling window
+            days_offset = random.randint(0, 29)
+            vacation_start = start_date + timedelta(days=days_offset)
+            vacation_end = vacation_start + timedelta(days=1)
+
+            request = MemberRequest(
+                member_id=member.id,
+                start_at=vacation_start,
+                end_at=vacation_end,
+                description="Vacation day"
+            )
+            session.add(request)
+
+        session.commit()
+
+        print(f"✓ Created {num_requests} vacation requests for random members")
 
         # Create Shifts
         # Specialty-specific shifts
@@ -187,7 +213,7 @@ def main():
         print("✓ Created ShiftConstraint (On-call restriction)")
 
     # Run the scheduler for the next 30 days
-    start_date = datetime.now(timezone.utc)
+    start_date = datetime.now()
     end_date = start_date + timedelta(days=30)
 
     print(f"\nRunning scheduler from {start_date.date()} to {end_date.date()}...")

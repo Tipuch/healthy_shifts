@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlmodel import select
+from sqlalchemy.orm import selectinload
 from models import Member, Shift, ShiftConstraint, MemberGroupShift
 from db import Session, engine
 from ortools.sat.python import cp_model
@@ -8,7 +9,7 @@ from ortools.sat.python import cp_model
 
 def schedule_shifts(start: datetime, end: datetime):
     with Session(engine) as session:
-        members = session.exec(select(Member)).all()
+        members = session.exec(select(Member).options(selectinload(Member.requests))).all()
         shifts = session.exec(select(Shift)).all()
         shift_constraints = session.exec(select(ShiftConstraint)).all()
 
@@ -16,7 +17,6 @@ def schedule_shifts(start: datetime, end: datetime):
     all_members = members_dict.keys()
 
     shifts_dict = {k: shift for k, shift in enumerate(shifts)}
-    print(shifts_dict)
     all_shifts = shifts_dict.keys()
     shift_requirements = {k: shift.members_required for k, shift in shifts_dict.items()}
 
@@ -26,18 +26,18 @@ def schedule_shifts(start: datetime, end: datetime):
     model = cp_model.CpModel()
 
     shifts = {}
-    for n in all_members:
+    for m in all_members:
         for d in all_days:
             for s in all_shifts:
-                shifts[(n, d, s)] = model.new_bool_var(f"shift_n{n}_d{d}_s{s}")
+                shifts[(m, d, s)] = model.new_bool_var(f"shift_m{m}_d{d}_s{s}")
 
     for d in all_days:
         for s in all_shifts:
             model.add(
-                sum(shifts[(n, d, s)] for n in all_members) == shift_requirements[s]
+                sum(shifts[(m, d, s)] for m in all_members) == shift_requirements[s]
             )
 
-    for n in all_members:
+    for m in all_members:
         for shift_constraint in shift_constraints:
             from_shift_key = find_key_in_dict(shift_constraint.shift_id, shifts_dict)
             to_shift_key = find_key_in_dict(
@@ -47,8 +47,8 @@ def schedule_shifts(start: datetime, end: datetime):
             for d in range(num_days - within):
                 for i in range(within):
                     model.add(
-                        shifts[(n, d, from_shift_key)]
-                        + shifts[(n, d + i + 1, to_shift_key)]
+                        shifts[(m, d, from_shift_key)]
+                        + shifts[(m, d + i + 1, to_shift_key)]
                         <= 1
                     )
 
@@ -67,37 +67,38 @@ def schedule_shifts(start: datetime, end: datetime):
         }
 
     # Constraint: members can only work shifts they're eligible for
-    for n in all_members:
+    for m in all_members:
         for d in all_days:
             for s in all_shifts:
-                if n not in shift_eligibility[s]:
-                    model.add(shifts[(n, d, s)] == 0)
+                if m not in shift_eligibility[s]:
+                    model.add(shifts[(m, d, s)] == 0)
 
     # Soft fairness constraint: minimize the difference in shift counts
     # among members eligible for the same shift type
     fairness_penalties = []
-
+    diffs = []
     for s in all_shifts:
         eligible_members = shift_eligibility[s]
         if len(eligible_members) > 1:
             # Count total shifts of type s each eligible member works
             member_shift_counts = {}
-            for n in eligible_members:
+            for m in eligible_members:
                 count_vars = []
                 for d in all_days:
-                    count_vars.append(shifts[(n, d, s)])
-                member_shift_counts[n] = sum(count_vars)
+                    count_vars.append(shifts[(m, d, s)])
+                member_shift_counts[m] = sum(count_vars)
 
             # Create variables for min and max shift counts among eligible members
             min_count = model.new_int_var(0, num_days, f"min_count_shift_{s}")
             max_count = model.new_int_var(0, num_days, f"max_count_shift_{s}")
 
-            for n in eligible_members:
-                model.add(min_count <= member_shift_counts[n])
-                model.add(max_count >= member_shift_counts[n])
+            for m in eligible_members:
+                model.add(min_count <= member_shift_counts[m])
+                model.add(max_count >= member_shift_counts[m])
 
             # Create penalty variable for the difference
             diff = model.new_int_var(0, num_days, f"diff_shift_{s}")
+            diffs.append(diff)
             model.add(diff == max_count - min_count)
             fairness_penalties.append(diff)
 
@@ -107,53 +108,88 @@ def schedule_shifts(start: datetime, end: datetime):
     solver = cp_model.CpSolver()
     solver.parameters.linearization_level = 1
 
+    # Phase 1: Solve for minimizing fairness penalties
     status = solver.solve(model)
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        print("\n✓ Solution found!")
-        print("=" * 80)
+        # Add hints from Phase 1 solution for all shift assignment variables
+        for m in all_members:
+            for d in all_days:
+                for s in all_shifts:
+                    model.add_hint(shifts[(m, d, s)], solver.value(shifts[(m, d, s)]))
 
-        for d in all_days:
-            print(f"\n📅 Day {d + 1}")
-            print("-" * 80)
+        # Hint fairness penalty variables
+        for diff in diffs:
+            model.add_hint(diff, solver.value(diff))
 
-            # Group by shifts for better readability
-            for s in all_shifts:
-                shift = shifts_dict[s]
-                assigned_members = []
-                for n in all_members:
-                    if solver.value(shifts[(n, d, s)]):
-                        assigned_members.append(members_dict[n].name)
+        # Lock in fairness objective as constraint
+        model.add(sum(fairness_penalties) <= round(solver.objective_value))
 
-                if assigned_members:
-                    print(f"\n  {shift.description}:")
-                    for member_name in assigned_members:
-                        print(f"    • {member_name}")
+        # Phase 2: Solve with hints
+        # enumerate the bool variables that correspond to member requests and then minimize the sum, so that the best case scenario is 0
+        # where every request is fulfilled, we need to know which day (numbered) within our range of dates corresponds to every member request
+        requests = {}
+        requests_list = []
+        for k, member in members_dict.items():
+            for member_request in member.requests:
+                if start <= member_request.start_at <= end and start <= member_request.end_at <= end:
+                    day = (end - member_request.start_at).days - 1
+                    for s in all_shifts:
+                        if k not in shift_eligibility[s]:
+                            requests[(k, day, s)] = model.new_bool_var(f"request_m{k}_d{day}_s{s}")
+                            requests_list.append(requests[(k, day, s)])
+                            model.add(requests[(k, day, s)] == shifts[(k, day, s)])
 
-        # Print statistics: shifts per member per category
-        print("\n" + "=" * 80)
-        print("📊 Shift Statistics by Member")
-        print("=" * 80)
+        model.minimize(sum(requests_list))
+        status2 = solver.solve(model)
 
-        for n in all_members:
-            member = members_dict[n]
-            shift_counts = {}
-            for s in all_shifts:
-                count = sum(solver.value(shifts[(n, d, s)]) for d in all_days)
-                shift_counts[s] = count
+        if status2 == cp_model.OPTIMAL or status2 == cp_model.FEASIBLE:
+            print("\n✓ Solution found!")
+            print("=" * 80)
 
-            total = sum(shift_counts.values())
+            for d in all_days:
+                print(f"\n📅 Day {d + 1}")
+                print("-" * 80)
 
-            # Build a readable shift breakdown
-            shift_breakdown = []
-            for s in all_shifts:
-                shift_name = shifts_dict[s].description.replace(" Shift", "")
-                shift_breakdown.append(f"{shift_name}: {shift_counts[s]}")
+                # Group by shifts for better readability
+                for s in all_shifts:
+                    shift = shifts_dict[s]
+                    assigned_members = []
+                    for m in all_members:
+                        if solver.value(shifts[(m, d, s)]):
+                            assigned_members.append(members_dict[m].name)
 
-            shift_details = ", ".join(shift_breakdown)
-            print(f"{member.name}: {shift_details} | Total: {total}")
+                    if assigned_members:
+                        print(f"\n  {shift.description}:")
+                        for member_name in assigned_members:
+                            print(f"    • {member_name}")
+
+            # Print statistics: shifts per member per category
+            print("\n" + "=" * 80)
+            print("📊 Shift Statistics by Member")
+            print("=" * 80)
+
+            for m in all_members:
+                member = members_dict[m]
+                shift_counts = {}
+                for s in all_shifts:
+                    count = sum(solver.value(shifts[(m, d, s)]) for d in all_days)
+                    shift_counts[s] = count
+
+                total = sum(shift_counts.values())
+
+                # Build a readable shift breakdown
+                shift_breakdown = []
+                for s in all_shifts:
+                    shift_name = shifts_dict[s].description.replace(" Shift", "")
+                    shift_breakdown.append(f"{shift_name}: {shift_counts[s]}")
+
+                shift_details = ", ".join(shift_breakdown)
+                print(f"{member.name}: {shift_details} | Total: {total}")
+        else:
+            print("❌ No solution found in phase 2.")
     else:
-        print("❌ No solution found.")
+        print("❌ No solution found in phase 1.")
 
 
 def find_key_in_dict(obj_id: uuid.UUID, model_dict: dict[int, Member | Shift]) -> int:

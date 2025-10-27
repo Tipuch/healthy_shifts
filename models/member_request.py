@@ -1,7 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlmodel import Field, SQLModel
+from typing import TYPE_CHECKING
+from sqlmodel import Field, SQLModel, Relationship
+
+if TYPE_CHECKING:
+    from .member import Member
 
 
 class MemberRequest(SQLModel, table=True):
@@ -18,3 +22,4 @@ class MemberRequest(SQLModel, table=True):
     member_id: uuid.UUID = Field(
         index=True, foreign_key="member.id", nullable=False, min_length=1
     )
+    member: "Member" = Relationship(back_populates="requests")
