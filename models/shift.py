@@ -20,7 +20,7 @@ class Shift(SQLModel, table=True):
     seconds_since_midnight: int = Field(default=0, nullable=False)
     duration_seconds: int = Field(default=3600, nullable=False)
     members_required: int = Field(default=0, nullable=False)
-    # 0 Sunday -> 6 Saturday
+    # 0 Monday -> 6 Sunday
     days: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     description: str = Field(default="", nullable=False)
 

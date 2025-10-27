@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlmodel import select
 from sqlalchemy.orm import selectinload
 from models import Member, Shift, ShiftConstraint, MemberGroupShift
@@ -21,7 +21,59 @@ def schedule_shifts(start: datetime, end: datetime):
     shift_requirements = {k: shift.members_required for k, shift in shifts_dict.items()}
 
     num_days = (end - start).days
+    days_dict = {k: d for k, d in enumerate([start + timedelta(days=x) for x in range(num_days)])}
     all_days = range(num_days)
+
+    # Build set of (member_key, day, shift_key) where time-off requests overlap shifts
+    request_overlaps: set[tuple[int, int, int]] = set()
+
+    for member_key, member in members_dict.items():
+        for request in member.requests:
+            # Clip request to scheduling window
+            effective_start = max(request.start_at, start)
+            effective_end = min(request.end_at, end)
+
+            # Skip if request is entirely outside window
+            if effective_start >= effective_end:
+                continue
+
+            # Iterate through all days in request range
+            current_date = effective_start.date()
+            end_date = effective_end.date()
+
+            while current_date <= end_date:
+                # Find day index in our scheduling window
+                day_key = None
+                for d_idx, d_date in days_dict.items():
+                    if d_date.date() == current_date:
+                        day_key = d_idx
+                        break
+
+                if day_key is not None and day_key in all_days:
+                    # Check each shift for overlap
+                    for shift_key, shift in shifts_dict.items():
+                        # Skip if shift doesn't occur on this weekday
+                        if str(current_date.weekday()) not in shift.days:
+                            continue
+
+                        # Build shift datetime range for this specific day (naive datetime)
+                        day_start = datetime.combine(current_date, datetime.min.time())
+                        shift_start = day_start + timedelta(seconds=shift.seconds_since_midnight)
+                        shift_end = shift_start + timedelta(seconds=shift.duration_seconds)
+
+                        # Check for any overlap using interval intersection
+                        if max(shift_start, effective_start) < min(shift_end, effective_end):
+                            request_overlaps.add((member_key, day_key, shift_key))
+
+                current_date += timedelta(days=1)
+
+    # Debug output to verify overlap detection
+    print(f"\n🔍 Found {len(request_overlaps)} request-shift overlaps")
+    if request_overlaps:
+        print("Sample overlaps (member, day, shift):")
+        for overlap in list(request_overlaps)[:5]:
+            m, d, s = overlap
+            print(f"  - Member: {members_dict[m].name}, Day: {d}, Shift: {shifts_dict[s].description}")
 
     model = cp_model.CpModel()
 
@@ -31,11 +83,13 @@ def schedule_shifts(start: datetime, end: datetime):
             for s in all_shifts:
                 shifts[(m, d, s)] = model.new_bool_var(f"shift_m{m}_d{d}_s{s}")
 
+
     for d in all_days:
         for s in all_shifts:
-            model.add(
-                sum(shifts[(m, d, s)] for m in all_members) == shift_requirements[s]
-            )
+            if str((days_dict[d].weekday() + 1) % 7) in shifts_dict[s].days:
+                model.add(
+                    sum(shifts[(m, d, s)] for m in all_members) == shift_requirements[s]
+                )
 
     for m in all_members:
         for shift_constraint in shift_constraints:
@@ -45,6 +99,12 @@ def schedule_shifts(start: datetime, end: datetime):
             )
             within = shift_constraint.within_last_shifts
             for d in range(num_days - within):
+                if from_shift_key != to_shift_key:
+                    model.add(
+                        shifts[(m, d, from_shift_key)]
+                        + shifts[(m, d, to_shift_key)]
+                        <= 1
+                    )
                 for i in range(within):
                     model.add(
                         shifts[(m, d, from_shift_key)]
@@ -125,44 +185,45 @@ def schedule_shifts(start: datetime, end: datetime):
         # Lock in fairness objective as constraint
         model.add(sum(fairness_penalties) <= round(solver.objective_value))
 
-        # Phase 2: Solve with hints
-        # enumerate the bool variables that correspond to member requests and then minimize the sum, so that the best case scenario is 0
-        # where every request is fulfilled, we need to know which day (numbered) within our range of dates corresponds to every member request
-        requests = {}
-        requests_list = []
-        for k, member in members_dict.items():
-            for member_request in member.requests:
-                if start <= member_request.start_at <= end and start <= member_request.end_at <= end:
-                    day = (end - member_request.start_at).days - 1
-                    for s in all_shifts:
-                        if k not in shift_eligibility[s]:
-                            requests[(k, day, s)] = model.new_bool_var(f"request_m{k}_d{day}_s{s}")
-                            requests_list.append(requests[(k, day, s)])
-                            model.add(requests[(k, day, s)] == shifts[(k, day, s)])
+        # Phase 2: Minimize scheduling members during time-off requests
+        # Use pre-computed overlap set for accurate time-of-day overlap detection
+        request_violations = []
+        for (m, d, s) in request_overlaps:
+            violation = model.new_bool_var(f"request_violation_m{m}_d{d}_s{s}")
+            request_violations.append(violation)
+            model.add(violation == shifts[(m, d, s)])
 
-        model.minimize(sum(requests_list))
+        print(f"\n📊 Phase 2: Minimizing {len(request_violations)} potential request violations")
+        model.minimize(sum(request_violations))
         status2 = solver.solve(model)
 
         if status2 == cp_model.OPTIMAL or status2 == cp_model.FEASIBLE:
             print("\n✓ Solution found!")
             print("=" * 80)
 
-            for d in all_days:
-                print(f"\n📅 Day {d + 1}")
-                print("-" * 80)
+            # Filter for a specific member
+            filter_member_name = "Dr. Sarah Johnson"
+            print(f"\n🔍 Showing schedule for: {filter_member_name}")
+            print("=" * 80)
 
-                # Group by shifts for better readability
+            for d in all_days:
+                day_has_shifts = False
+                shift_output = []
+
+                # Collect shifts for filtered member on this day
                 for s in all_shifts:
                     shift = shifts_dict[s]
-                    assigned_members = []
                     for m in all_members:
-                        if solver.value(shifts[(m, d, s)]):
-                            assigned_members.append(members_dict[m].name)
+                        if members_dict[m].name == filter_member_name and solver.value(shifts[(m, d, s)]):
+                            shift_output.append(f"  • {shift.description}")
+                            day_has_shifts = True
 
-                    if assigned_members:
-                        print(f"\n  {shift.description}:")
-                        for member_name in assigned_members:
-                            print(f"    • {member_name}")
+                # Only print day if the member has shifts
+                if day_has_shifts:
+                    print(f"\n📅 Day {d + 1}")
+                    print("-" * 80)
+                    for shift_line in shift_output:
+                        print(shift_line)
 
             # Print statistics: shifts per member per category
             print("\n" + "=" * 80)
