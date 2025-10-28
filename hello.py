@@ -1,10 +1,12 @@
 import random
 from datetime import datetime, timedelta
 
+import sqlalchemy
+
 from db import Session, SQLModel, engine
 from models import (Member, MemberGroup, MemberGroupShift, MemberRequest,
                     Shift, ShiftConstraint)
-from services.schedule_service import schedule_shifts
+from services.schedule_service import save_schedule, schedule_shifts
 
 
 def main():
@@ -361,6 +363,8 @@ def main():
             (obstetrics_weekend_night, obstetrics_weekday_night),
             (im_weekday_night, im_weekend_night),
             (im_weekend_night, im_weekday_night),
+            (opd_weekend_night, opd_weekday_night),
+            (opd_weekday_night, opd_weekend_night),
         ]
         consecutive_constraints = 0
         for shift in night_shifts:
@@ -375,6 +379,7 @@ def main():
                         within_last_shifts=1,
                     )
                     session.add(constraint)
+                    session.commit()
                     consecutive_constraints += 1
 
         # 2. Prevent overlapping shifts on the same day (within_last_shifts=0)
@@ -428,6 +433,8 @@ def main():
 
         overlap_constraints = 0
         for shift, linked_shift in overlapping_pairs:
+            if shift.id == surgery_weekend_night.id and linked_shift.id == er_night.id:
+                continue
             constraint = ShiftConstraint(
                 shift_id=shift.id,
                 linked_shift_id=linked_shift.id,
@@ -435,7 +442,13 @@ def main():
             )
             session.add(constraint)
             overlap_constraints += 1
-
+        constraint = ShiftConstraint(
+            shift_id=surgery_weekend_night.id,
+            linked_shift_id=er_night.id,
+            within_last_shifts=1,
+        )
+        session.add(constraint)
+        overlap_constraints += 1
         session.commit()
 
         print(
@@ -453,12 +466,18 @@ def main():
             f"✓ Created {overlap_constraints} ShiftConstraints (prevent overlapping shifts on same day)"
         )
 
-    # Run the scheduler for the next 30 days
-    start_date = datetime.now()
+    # Run the scheduler for the next 30 days (use clean date at midnight)
+    start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     end_date = start_date + timedelta(days=30)
 
     print(f"\nRunning scheduler from {start_date.date()} to {end_date.date()}...")
-    schedule_shifts(start_date, end_date)
+    solver, shifts, members_dict, shifts_dict, days_dict = schedule_shifts(
+        start_date, end_date
+    )
+
+    # Save the schedule to database if solution was found
+    if solver is not None:
+        save_schedule(solver, shifts, members_dict, shifts_dict, days_dict)
 
     # Verification: Check that time-off requests were respected
     print("\n" + "=" * 80)
@@ -522,6 +541,14 @@ def main():
         else:
             print("❌ FAILURE: Some members were scheduled during time-off")
         print("=" * 80)
+
+        # Demonstrate display_schedule() method
+        if solver is not None:
+            # Get first member from the database
+            first_member = session.exec(select(Member)).first()
+            if first_member:
+                schedule_output = first_member.display_schedule(session)
+                print(schedule_output)
 
 
 if __name__ == "__main__":

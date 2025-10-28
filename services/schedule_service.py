@@ -6,7 +6,8 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
 from db import Session, engine
-from models import Member, MemberGroupShift, Shift, ShiftConstraint
+from models import (Member, MemberGroupShift, MemberShiftScheduled, Shift,
+                    ShiftConstraint, ShiftScheduled)
 
 
 def schedule_shifts(start: datetime, end: datetime):
@@ -99,10 +100,12 @@ def schedule_shifts(start: datetime, end: datetime):
 
     for d in all_days:
         for s in all_shifts:
-            if str((days_dict[d].weekday() + 1) % 7) in shifts_dict[s].days:
+            if str(days_dict[d].weekday()) in shifts_dict[s].days:
                 model.add(
                     sum(shifts[(m, d, s)] for m in all_members) == shift_requirements[s]
                 )
+            else:
+                model.add(sum(shifts[(m, d, s)] for m in all_members) == 0)
 
     for m in all_members:
         for shift_constraint in shift_constraints:
@@ -213,60 +216,77 @@ def schedule_shifts(start: datetime, end: datetime):
 
         if status2 == cp_model.OPTIMAL or status2 == cp_model.FEASIBLE:
             print("\n✓ Solution found!")
-            print("=" * 80)
-
-            # Filter for a specific member
-            filter_member_name = "Dr. Sarah Johnson"
-            print(f"\n🔍 Showing schedule for: {filter_member_name}")
-            print("=" * 80)
-
-            for d in all_days:
-                day_has_shifts = False
-                shift_output = []
-
-                # Collect shifts for filtered member on this day
-                for s in all_shifts:
-                    shift = shifts_dict[s]
-                    for m in all_members:
-                        if members_dict[m].name == filter_member_name and solver.value(
-                            shifts[(m, d, s)]
-                        ):
-                            shift_output.append(f"  • {shift.description}")
-                            day_has_shifts = True
-
-                # Only print day if the member has shifts
-                if day_has_shifts:
-                    print(f"\n📅 Day {d + 1}")
-                    print("-" * 80)
-                    for shift_line in shift_output:
-                        print(shift_line)
-
-            # Print statistics: shifts per member per category
-            print("\n" + "=" * 80)
-            print("📊 Shift Statistics by Member")
-            print("=" * 80)
-
-            for m in all_members:
-                member = members_dict[m]
-                shift_counts = {}
-                for s in all_shifts:
-                    count = sum(solver.value(shifts[(m, d, s)]) for d in all_days)
-                    shift_counts[s] = count
-
-                total = sum(shift_counts.values())
-
-                # Build a readable shift breakdown
-                shift_breakdown = []
-                for s in all_shifts:
-                    shift_name = shifts_dict[s].description.replace(" Shift", "")
-                    shift_breakdown.append(f"{shift_name}: {shift_counts[s]}")
-
-                shift_details = ", ".join(shift_breakdown)
-                print(f"{member.name}: {shift_details} | Total: {total}")
+            return solver, shifts, members_dict, shifts_dict, days_dict
         else:
             print("❌ No solution found in phase 2.")
+            return None, None, None, None, None
     else:
         print("❌ No solution found in phase 1.")
+        return None, None, None, None, None
+
+
+def save_schedule(
+    solver,
+    shifts,
+    members_dict: dict[int, Member],
+    shifts_dict: dict[int, Shift],
+    days_dict: dict[int, datetime],
+):
+    """
+    Save the scheduling solution to the database.
+
+    Creates ShiftScheduled instances and MemberShiftScheduled assignments
+    based on the solver's solution.
+    """
+    with Session(engine) as session:
+        # Track created ShiftScheduled instances by (day, shift) to avoid duplicates
+        scheduled_shifts_cache = {}
+        member_assignments = 0
+
+        # Iterate through all possible assignments
+        for (m, d, s), var in shifts.items():
+            if solver.value(var) == 1:
+                member = members_dict[m]
+                shift = shifts_dict[s]
+                day_start = days_dict[d]
+
+                # Create unique key for this scheduled shift instance
+                cache_key = (d, s)
+
+                # Create ShiftScheduled if not already created for this day/shift
+                if cache_key not in scheduled_shifts_cache:
+                    # Calculate start and end times
+                    shift_start = day_start + timedelta(
+                        seconds=shift.seconds_since_midnight
+                    )
+                    shift_end = shift_start + timedelta(seconds=shift.duration_seconds)
+
+                    # Create ShiftScheduled instance
+                    scheduled_shift = ShiftScheduled(
+                        start_at=shift_start,
+                        end_at=shift_end,
+                        description=shift.description,
+                        shift_id=shift.id,
+                    )
+                    session.add(scheduled_shift)
+                    session.flush()  # Get the ID assigned
+
+                    scheduled_shifts_cache[cache_key] = scheduled_shift
+                else:
+                    scheduled_shift = scheduled_shifts_cache[cache_key]
+
+                # Create member assignment
+                assignment = MemberShiftScheduled(
+                    member_id=member.id,
+                    shift_scheduled_id=scheduled_shift.id,
+                )
+                session.add(assignment)
+                member_assignments += 1
+
+        session.commit()
+
+        print(f"\n✓ Created {len(scheduled_shifts_cache)} ShiftScheduled instances")
+        print(f"✓ Created {member_assignments} member assignments")
 
 
 def find_key_in_dict(obj_id: uuid.UUID, model_dict: dict[int, Member | Shift]) -> int:
