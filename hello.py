@@ -1,14 +1,9 @@
-from datetime import datetime, timedelta
 import random
-from db import SQLModel, engine, Session
-from models import (
-    Member,
-    MemberGroup,
-    MemberGroupShift,
-    MemberRequest,
-    Shift,
-    ShiftConstraint,
-)
+from datetime import datetime, timedelta
+
+from db import Session, SQLModel, engine
+from models import (Member, MemberGroup, MemberGroupShift, MemberRequest,
+                    Shift, ShiftConstraint)
 from services.schedule_service import schedule_shifts
 
 
@@ -471,8 +466,9 @@ def main():
     print("=" * 80)
 
     with Session(engine) as session:
-        from models import ShiftScheduled, MemberShiftScheduled
         from sqlmodel import select
+
+        from models import MemberShiftScheduled, ShiftScheduled
 
         # Get all time-off requests
         statement = select(MemberRequest, Member).join(Member)

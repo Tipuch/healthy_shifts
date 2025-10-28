@@ -2,8 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlmodel import Field, Relationship, SQLModel, PrimaryKeyConstraint
-
+from sqlmodel import Field, PrimaryKeyConstraint, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from models import Shift

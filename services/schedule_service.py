@@ -1,10 +1,12 @@
 import uuid
 from datetime import datetime, timedelta
-from sqlmodel import select
-from sqlalchemy.orm import selectinload
-from models import Member, Shift, ShiftConstraint, MemberGroupShift
-from db import Session, engine
+
 from ortools.sat.python import cp_model
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
+
+from db import Session, engine
+from models import Member, MemberGroupShift, Shift, ShiftConstraint
 
 
 def schedule_shifts(start: datetime, end: datetime):

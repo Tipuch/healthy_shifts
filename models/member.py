@@ -1,10 +1,9 @@
 import uuid
 from datetime import datetime, timezone
-
 from typing import TYPE_CHECKING
-from sqlalchemy.orm import validates
-from sqlmodel import Field, SQLModel, Relationship
 
+from sqlalchemy.orm import validates
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .member_request import MemberRequest
