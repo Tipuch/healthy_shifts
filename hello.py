@@ -1,7 +1,14 @@
 from datetime import datetime, timedelta
 import random
 from db import SQLModel, engine, Session
-from models import Member, MemberGroup, MemberGroupShift, MemberRequest, Shift, ShiftConstraint
+from models import (
+    Member,
+    MemberGroup,
+    MemberGroupShift,
+    MemberRequest,
+    Shift,
+    ShiftConstraint,
+)
 from services.schedule_service import schedule_shifts
 
 
@@ -107,7 +114,7 @@ def main():
                 member_id=member.id,
                 start_at=vacation_start,
                 end_at=vacation_end,
-                description="Vacation day"
+                description="Vacation day",
             )
             session.add(request)
 
@@ -267,37 +274,58 @@ def main():
         # Create many-to-many relationships between MemberGroups and Shifts
         # Dedicated weekday night shifts - one per group
         session.add(
-            MemberGroupShift(member_group_id=surgery.id, shift_id=surgery_weekday_night.id)
+            MemberGroupShift(
+                member_group_id=surgery.id, shift_id=surgery_weekday_night.id
+            )
         )
         session.add(
-            MemberGroupShift(member_group_id=pediatry.id, shift_id=pediatry_weekday_night.id)
+            MemberGroupShift(
+                member_group_id=pediatry.id, shift_id=pediatry_weekday_night.id
+            )
         )
         session.add(
-            MemberGroupShift(member_group_id=obstetrics.id, shift_id=obstetrics_weekday_night.id)
+            MemberGroupShift(
+                member_group_id=obstetrics.id, shift_id=obstetrics_weekday_night.id
+            )
         )
         session.add(
-            MemberGroupShift(member_group_id=internal_medicine.id, shift_id=im_weekday_night.id)
+            MemberGroupShift(
+                member_group_id=internal_medicine.id, shift_id=im_weekday_night.id
+            )
         )
 
         # Dedicated weekend night shifts - one per group
         session.add(
-            MemberGroupShift(member_group_id=surgery.id, shift_id=surgery_weekend_night.id)
+            MemberGroupShift(
+                member_group_id=surgery.id, shift_id=surgery_weekend_night.id
+            )
         )
         session.add(
-            MemberGroupShift(member_group_id=pediatry.id, shift_id=pediatry_weekend_night.id)
+            MemberGroupShift(
+                member_group_id=pediatry.id, shift_id=pediatry_weekend_night.id
+            )
         )
         session.add(
-            MemberGroupShift(member_group_id=obstetrics.id, shift_id=obstetrics_weekend_night.id)
+            MemberGroupShift(
+                member_group_id=obstetrics.id, shift_id=obstetrics_weekend_night.id
+            )
         )
         session.add(
-            MemberGroupShift(member_group_id=internal_medicine.id, shift_id=im_weekend_night.id)
+            MemberGroupShift(
+                member_group_id=internal_medicine.id, shift_id=im_weekend_night.id
+            )
         )
 
         # Shared ER and OPD shifts - all groups
-        for shift in [er_morning, er_evening, er_night, opd_weekday_night, opd_weekend_day, opd_weekend_night]:
-            session.add(
-                MemberGroupShift(member_group_id=surgery.id, shift_id=shift.id)
-            )
+        for shift in [
+            er_morning,
+            er_evening,
+            er_night,
+            opd_weekday_night,
+            opd_weekend_day,
+            opd_weekend_night,
+        ]:
+            session.add(MemberGroupShift(member_group_id=surgery.id, shift_id=shift.id))
             session.add(
                 MemberGroupShift(member_group_id=pediatry.id, shift_id=shift.id)
             )
@@ -305,7 +333,9 @@ def main():
                 MemberGroupShift(member_group_id=obstetrics.id, shift_id=shift.id)
             )
             session.add(
-                MemberGroupShift(member_group_id=internal_medicine.id, shift_id=shift.id)
+                MemberGroupShift(
+                    member_group_id=internal_medicine.id, shift_id=shift.id
+                )
             )
 
         session.commit()
@@ -327,18 +357,23 @@ def main():
             opd_weekday_night,
             opd_weekend_night,
         ]
-        same_shift_pairs = [(surgery_weekday_night, surgery_weekend_night),
-                            (surgery_weekend_night, surgery_weekday_night),
-                            (pediatry_weekday_night, pediatry_weekend_night),
-                            (pediatry_weekend_night, pediatry_weekday_night),
-                            (obstetrics_weekday_night, obstetrics_weekend_night),
-                            (obstetrics_weekend_night, obstetrics_weekday_night),
-                            (im_weekday_night, im_weekend_night),
-                            (im_weekend_night, im_weekday_night)]
+        same_shift_pairs = [
+            (surgery_weekday_night, surgery_weekend_night),
+            (surgery_weekend_night, surgery_weekday_night),
+            (pediatry_weekday_night, pediatry_weekend_night),
+            (pediatry_weekend_night, pediatry_weekday_night),
+            (obstetrics_weekday_night, obstetrics_weekend_night),
+            (obstetrics_weekend_night, obstetrics_weekday_night),
+            (im_weekday_night, im_weekend_night),
+            (im_weekend_night, im_weekday_night),
+        ]
         consecutive_constraints = 0
         for shift in night_shifts:
             for linked_shift in night_shifts:
-                if shift.id == linked_shift.id or (shift, linked_shift) in same_shift_pairs:
+                if (
+                    shift.id == linked_shift.id
+                    or (shift, linked_shift) in same_shift_pairs
+                ):
                     constraint = ShiftConstraint(
                         shift_id=shift.id,
                         linked_shift_id=linked_shift.id,
@@ -351,7 +386,12 @@ def main():
         overlapping_pairs = []
 
         # Weekday dedicated night shifts overlap with weekday ER/OPD shifts
-        weekday_dedicated = [surgery_weekday_night, pediatry_weekday_night, obstetrics_weekday_night, im_weekday_night]
+        weekday_dedicated = [
+            surgery_weekday_night,
+            pediatry_weekday_night,
+            obstetrics_weekday_night,
+            im_weekday_night,
+        ]
         weekday_shared = [er_evening, er_night, opd_weekday_night]
 
         for ded_shift in weekday_dedicated:
@@ -364,8 +404,19 @@ def main():
         overlapping_pairs.append((opd_weekday_night, er_evening))
 
         # Weekend dedicated night shifts (24hrs) overlap with ALL weekend shifts
-        weekend_dedicated = [surgery_weekend_night, pediatry_weekend_night, obstetrics_weekend_night, im_weekend_night]
-        weekend_shared = [er_morning, er_evening, er_night, opd_weekend_day, opd_weekend_night]
+        weekend_dedicated = [
+            surgery_weekend_night,
+            pediatry_weekend_night,
+            obstetrics_weekend_night,
+            im_weekend_night,
+        ]
+        weekend_shared = [
+            er_morning,
+            er_evening,
+            er_night,
+            opd_weekend_day,
+            opd_weekend_night,
+        ]
 
         for ded_shift in weekend_dedicated:
             for shared_shift in weekend_shared:
@@ -392,14 +443,20 @@ def main():
 
         session.commit()
 
-        print("✓ Created 4 MemberGroups (Surgery, Pediatry, Obstetrics, Internal Medicine)")
+        print(
+            "✓ Created 4 MemberGroups (Surgery, Pediatry, Obstetrics, Internal Medicine)"
+        )
         print(
             f"✓ Created {len(members)} Members ({len(surgery_doctors)} Surgery, {len(pediatry_doctors)} Pediatry, {len(obstetrics_doctors)} Obstetrics, {len(im_doctors)} IM)"
         )
         print("✓ Created 15 Shifts (8 dedicated group shifts + 7 shared shifts)")
         print("✓ Created MemberGroupShift associations")
-        print(f"✓ Created {consecutive_constraints} ShiftConstraints (prevent consecutive night shifts)")
-        print(f"✓ Created {overlap_constraints} ShiftConstraints (prevent overlapping shifts on same day)")
+        print(
+            f"✓ Created {consecutive_constraints} ShiftConstraints (prevent consecutive night shifts)"
+        )
+        print(
+            f"✓ Created {overlap_constraints} ShiftConstraints (prevent overlapping shifts on same day)"
+        )
 
     # Run the scheduler for the next 30 days
     start_date = datetime.now()
@@ -409,9 +466,9 @@ def main():
     schedule_shifts(start_date, end_date)
 
     # Verification: Check that time-off requests were respected
-    print('\n' + '=' * 80)
-    print('VERIFICATION: Time-Off Request Overlap Detection')
-    print('=' * 80)
+    print("\n" + "=" * 80)
+    print("VERIFICATION: Time-Off Request Overlap Detection")
+    print("=" * 80)
 
     with Session(engine) as session:
         from models import ShiftScheduled, MemberShiftScheduled
@@ -421,23 +478,25 @@ def main():
         statement = select(MemberRequest, Member).join(Member)
         requests = session.exec(statement).all()
 
-        print('\nTime-off Requests Created:')
+        print("\nTime-off Requests Created:")
         for request, member in requests:
             day_offset = (request.start_at - start_date).days + 1
-            print(f'  {member.name}: Day {day_offset} ({request.start_at.date()})')
+            print(f"  {member.name}: Day {day_offset} ({request.start_at.date()})")
 
-        print('\nChecking if members with time-off were scheduled:')
+        print("\nChecking if members with time-off were scheduled:")
         all_passed = True
         examples = []
 
         for request, member in requests:
             # Get all shift assignments for this member
-            stmt = select(MemberShiftScheduled, ShiftScheduled, Shift).join(
-                ShiftScheduled, MemberShiftScheduled.shift_scheduled_id == ShiftScheduled.id
-            ).join(
-                Shift, ShiftScheduled.shift_id == Shift.id
-            ).where(
-                MemberShiftScheduled.member_id == member.id
+            stmt = (
+                select(MemberShiftScheduled, ShiftScheduled, Shift)
+                .join(
+                    ShiftScheduled,
+                    MemberShiftScheduled.shift_scheduled_id == ShiftScheduled.id,
+                )
+                .join(Shift, ShiftScheduled.shift_id == Shift.id)
+                .where(MemberShiftScheduled.member_id == member.id)
             )
 
             assignments = session.exec(stmt).all()
@@ -451,18 +510,22 @@ def main():
             day = (request.start_at - start_date).days + 1
 
             if overlapping_shifts:
-                print(f'  ❌ FAIL: {member.name} IS scheduled during time-off (Day {day}): {", ".join(overlapping_shifts)}')
+                print(
+                    f"  ❌ FAIL: {member.name} IS scheduled during time-off (Day {day}): {', '.join(overlapping_shifts)}"
+                )
                 all_passed = False
             else:
-                print(f'  ✓ PASS: {member.name} is NOT scheduled during time-off (Day {day})')
+                print(
+                    f"  ✓ PASS: {member.name} is NOT scheduled during time-off (Day {day})"
+                )
                 examples.append((member.name, day))
 
-        print('\n' + '=' * 80)
+        print("\n" + "=" * 80)
         if all_passed:
-            print('✅ SUCCESS: All time-off requests were respected!')
+            print("✅ SUCCESS: All time-off requests were respected!")
         else:
-            print('❌ FAILURE: Some members were scheduled during time-off')
-        print('=' * 80)
+            print("❌ FAILURE: Some members were scheduled during time-off")
+        print("=" * 80)
 
 
 if __name__ == "__main__":

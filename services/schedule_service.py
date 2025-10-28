@@ -9,7 +9,9 @@ from ortools.sat.python import cp_model
 
 def schedule_shifts(start: datetime, end: datetime):
     with Session(engine) as session:
-        members = session.exec(select(Member).options(selectinload(Member.requests))).all()
+        members = session.exec(
+            select(Member).options(selectinload(Member.requests))
+        ).all()
         shifts = session.exec(select(Shift)).all()
         shift_constraints = session.exec(select(ShiftConstraint)).all()
 
@@ -21,7 +23,9 @@ def schedule_shifts(start: datetime, end: datetime):
     shift_requirements = {k: shift.members_required for k, shift in shifts_dict.items()}
 
     num_days = (end - start).days
-    days_dict = {k: d for k, d in enumerate([start + timedelta(days=x) for x in range(num_days)])}
+    days_dict = {
+        k: d for k, d in enumerate([start + timedelta(days=x) for x in range(num_days)])
+    }
     all_days = range(num_days)
 
     # Build set of (member_key, day, shift_key) where time-off requests overlap shifts
@@ -58,11 +62,17 @@ def schedule_shifts(start: datetime, end: datetime):
 
                         # Build shift datetime range for this specific day (naive datetime)
                         day_start = datetime.combine(current_date, datetime.min.time())
-                        shift_start = day_start + timedelta(seconds=shift.seconds_since_midnight)
-                        shift_end = shift_start + timedelta(seconds=shift.duration_seconds)
+                        shift_start = day_start + timedelta(
+                            seconds=shift.seconds_since_midnight
+                        )
+                        shift_end = shift_start + timedelta(
+                            seconds=shift.duration_seconds
+                        )
 
                         # Check for any overlap using interval intersection
-                        if max(shift_start, effective_start) < min(shift_end, effective_end):
+                        if max(shift_start, effective_start) < min(
+                            shift_end, effective_end
+                        ):
                             request_overlaps.add((member_key, day_key, shift_key))
 
                 current_date += timedelta(days=1)
@@ -73,7 +83,9 @@ def schedule_shifts(start: datetime, end: datetime):
         print("Sample overlaps (member, day, shift):")
         for overlap in list(request_overlaps)[:5]:
             m, d, s = overlap
-            print(f"  - Member: {members_dict[m].name}, Day: {d}, Shift: {shifts_dict[s].description}")
+            print(
+                f"  - Member: {members_dict[m].name}, Day: {d}, Shift: {shifts_dict[s].description}"
+            )
 
     model = cp_model.CpModel()
 
@@ -82,7 +94,6 @@ def schedule_shifts(start: datetime, end: datetime):
         for d in all_days:
             for s in all_shifts:
                 shifts[(m, d, s)] = model.new_bool_var(f"shift_m{m}_d{d}_s{s}")
-
 
     for d in all_days:
         for s in all_shifts:
@@ -101,8 +112,7 @@ def schedule_shifts(start: datetime, end: datetime):
             for d in range(num_days - within):
                 if from_shift_key != to_shift_key:
                     model.add(
-                        shifts[(m, d, from_shift_key)]
-                        + shifts[(m, d, to_shift_key)]
+                        shifts[(m, d, from_shift_key)] + shifts[(m, d, to_shift_key)]
                         <= 1
                     )
                 for i in range(within):
@@ -188,12 +198,14 @@ def schedule_shifts(start: datetime, end: datetime):
         # Phase 2: Minimize scheduling members during time-off requests
         # Use pre-computed overlap set for accurate time-of-day overlap detection
         request_violations = []
-        for (m, d, s) in request_overlaps:
+        for m, d, s in request_overlaps:
             violation = model.new_bool_var(f"request_violation_m{m}_d{d}_s{s}")
             request_violations.append(violation)
             model.add(violation == shifts[(m, d, s)])
 
-        print(f"\n📊 Phase 2: Minimizing {len(request_violations)} potential request violations")
+        print(
+            f"\n📊 Phase 2: Minimizing {len(request_violations)} potential request violations"
+        )
         model.minimize(sum(request_violations))
         status2 = solver.solve(model)
 
@@ -214,7 +226,9 @@ def schedule_shifts(start: datetime, end: datetime):
                 for s in all_shifts:
                     shift = shifts_dict[s]
                     for m in all_members:
-                        if members_dict[m].name == filter_member_name and solver.value(shifts[(m, d, s)]):
+                        if members_dict[m].name == filter_member_name and solver.value(
+                            shifts[(m, d, s)]
+                        ):
                             shift_output.append(f"  • {shift.description}")
                             day_has_shifts = True
 
