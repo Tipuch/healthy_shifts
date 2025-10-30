@@ -5,6 +5,7 @@ from pathlib import Path
 from ortools.sat.python import cp_model
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
+from db import engine
 
 from models import (Member, MemberGroupShift, MemberShiftScheduled, Shift,
                     ShiftConstraint, ShiftScheduled)

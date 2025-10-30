@@ -6,7 +6,7 @@ import sqlalchemy
 from db import Session, SQLModel, engine
 from models import (Member, MemberGroup, MemberGroupShift, MemberRequest,
                     Shift, ShiftConstraint)
-from services.schedule_service import save_schedule, schedule_shifts
+from services.schedule_service import save_schedule, schedule_shifts, export_all_members_ics
 
 
 def main():
@@ -478,6 +478,7 @@ def main():
     # Save the schedule to database if solution was found
     if solver is not None:
         save_schedule(solver, shifts, members_dict, shifts_dict, days_dict)
+        export_all_members_ics(session, start_date, end_date, "./output")
 
     # Verification: Check that time-off requests were respected
     print("\n" + "=" * 80)
