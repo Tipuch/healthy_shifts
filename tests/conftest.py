@@ -14,8 +14,15 @@ from typing import AsyncGenerator
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
 
-from models import (Member, MemberGroup, MemberRequest, MemberShiftScheduled,
-                    Shift, ShiftConstraint, ShiftScheduled)
+from models import (
+    Member,
+    MemberGroup,
+    MemberRequest,
+    MemberShiftScheduled,
+    Shift,
+    ShiftConstraint,
+    ShiftScheduled,
+)
 
 
 @pytest.fixture(scope="function")

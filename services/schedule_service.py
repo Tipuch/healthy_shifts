@@ -7,8 +7,17 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 from db import engine
 
-from models import (Member, MemberGroupShift, MemberShiftScheduled, Shift,
-                    ShiftConstraint, ShiftScheduled)
+from models import (
+    Member,
+    MemberGroupShift,
+    MemberShiftScheduled,
+    Shift,
+    ShiftConstraint,
+    ShiftScheduled,
+)
+
+
+MAX_HOURS_IN_2_DAYS = 32
 
 
 def schedule_shifts(start: datetime, end: datetime):
@@ -94,10 +103,26 @@ def schedule_shifts(start: datetime, end: datetime):
     model = cp_model.CpModel()
 
     shifts = {}
+    working_hours = {}
     for m in all_members:
         for d in all_days:
             for s in all_shifts:
                 shifts[(m, d, s)] = model.new_bool_var(f"shift_m{m}_d{d}_s{s}")
+                working_hours[(m, d, s)] = model.new_int_var(
+                    0, 24, f"working_hours_m{m}_d{d}_s{s}"
+                )
+
+    for d in range(num_days - 1):
+        for m in all_members:
+            model.add(
+                sum(
+                    [
+                        working_hours[(m, d, s)] + working_hours[(m, d + 1, s)]
+                        for s in all_shifts
+                    ]
+                )
+                <= MAX_HOURS_IN_2_DAYS
+            )
 
     for d in all_days:
         for s in all_shifts:
@@ -148,6 +173,13 @@ def schedule_shifts(start: datetime, end: datetime):
             for s in all_shifts:
                 if m not in shift_eligibility[s]:
                     model.add(shifts[(m, d, s)] == 0)
+                else:
+                    (
+                        model.add(
+                            working_hours[(m, d, s)]
+                            == (shifts_dict[s].duration_seconds // 3600)
+                        ).only_enforce_if(shifts[(m, d, s)])
+                    )
 
     # Soft fairness constraint: minimize the difference in shift counts
     # among members eligible for the same shift type

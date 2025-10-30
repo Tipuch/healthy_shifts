@@ -1,12 +1,21 @@
 import random
 from datetime import datetime, timedelta
 
-import sqlalchemy
 
 from db import Session, SQLModel, engine
-from models import (Member, MemberGroup, MemberGroupShift, MemberRequest,
-                    Shift, ShiftConstraint)
-from services.schedule_service import save_schedule, schedule_shifts, export_all_members_ics
+from models import (
+    Member,
+    MemberGroup,
+    MemberGroupShift,
+    MemberRequest,
+    Shift,
+    ShiftConstraint,
+)
+from services.schedule_service import (
+    save_schedule,
+    schedule_shifts,
+    export_all_members_ics,
+)
 
 
 def main():
@@ -339,6 +348,8 @@ def main():
 
         # Create ShiftConstraints
 
+        ShiftConstraint.generate_from_overlaps(session)
+
         # 1. Prevent two night shifts in a row (within_last_shifts=1)
         night_shifts = [
             surgery_weekday_night,
@@ -367,6 +378,27 @@ def main():
             (opd_weekday_night, opd_weekend_night),
         ]
         consecutive_constraints = 0
+        session.add(
+            ShiftConstraint(
+                shift_id=er_night.id,
+                linked_shift_id=er_evening.id,
+                within_last_shifts=1,
+            )
+        )
+        session.add(
+            ShiftConstraint(
+                shift_id=er_night.id,
+                linked_shift_id=opd_weekday_night.id,
+                within_last_shifts=1,
+            )
+        )
+        session.add(
+            ShiftConstraint(
+                shift_id=er_night.id,
+                linked_shift_id=opd_weekend_night.id,
+                within_last_shifts=1,
+            )
+        )
         for shift in night_shifts:
             for linked_shift in night_shifts:
                 if (
@@ -379,76 +411,8 @@ def main():
                         within_last_shifts=1,
                     )
                     session.add(constraint)
-                    session.commit()
                     consecutive_constraints += 1
 
-        # 2. Prevent overlapping shifts on the same day (within_last_shifts=0)
-        overlapping_pairs = []
-
-        # Weekday dedicated night shifts overlap with weekday ER/OPD shifts
-        weekday_dedicated = [
-            surgery_weekday_night,
-            pediatry_weekday_night,
-            obstetrics_weekday_night,
-            im_weekday_night,
-        ]
-        weekday_shared = [er_evening, er_night, opd_weekday_night]
-
-        for ded_shift in weekday_dedicated:
-            for shared_shift in weekday_shared:
-                overlapping_pairs.append((ded_shift, shared_shift))
-                overlapping_pairs.append((shared_shift, ded_shift))
-
-        # ER Evening overlaps with OPD Weekday Night on weekdays
-        overlapping_pairs.append((er_evening, opd_weekday_night))
-        overlapping_pairs.append((opd_weekday_night, er_evening))
-
-        # Weekend dedicated night shifts (24hrs) overlap with ALL weekend shifts
-        weekend_dedicated = [
-            surgery_weekend_night,
-            pediatry_weekend_night,
-            obstetrics_weekend_night,
-            im_weekend_night,
-        ]
-        weekend_shared = [
-            er_morning,
-            er_evening,
-            er_night,
-            opd_weekend_day,
-            opd_weekend_night,
-        ]
-
-        for ded_shift in weekend_dedicated:
-            for shared_shift in weekend_shared:
-                overlapping_pairs.append((ded_shift, shared_shift))
-                overlapping_pairs.append((shared_shift, ded_shift))
-
-        # ER Morning overlaps with OPD Weekend Day on weekends
-        overlapping_pairs.append((er_morning, opd_weekend_day))
-        overlapping_pairs.append((opd_weekend_day, er_morning))
-
-        # ER Evening overlaps with OPD Weekend Night on weekends
-        overlapping_pairs.append((er_evening, opd_weekend_night))
-        overlapping_pairs.append((opd_weekend_night, er_evening))
-
-        overlap_constraints = 0
-        for shift, linked_shift in overlapping_pairs:
-            if shift.id == surgery_weekend_night.id and linked_shift.id == er_night.id:
-                continue
-            constraint = ShiftConstraint(
-                shift_id=shift.id,
-                linked_shift_id=linked_shift.id,
-                within_last_shifts=0,
-            )
-            session.add(constraint)
-            overlap_constraints += 1
-        constraint = ShiftConstraint(
-            shift_id=surgery_weekend_night.id,
-            linked_shift_id=er_night.id,
-            within_last_shifts=1,
-        )
-        session.add(constraint)
-        overlap_constraints += 1
         session.commit()
 
         print(
@@ -461,9 +425,6 @@ def main():
         print("✓ Created MemberGroupShift associations")
         print(
             f"✓ Created {consecutive_constraints} ShiftConstraints (prevent consecutive night shifts)"
-        )
-        print(
-            f"✓ Created {overlap_constraints} ShiftConstraints (prevent overlapping shifts on same day)"
         )
 
     # Run the scheduler for the next 30 days (use clean date at midnight)

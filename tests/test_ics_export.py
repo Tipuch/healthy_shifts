@@ -2,11 +2,9 @@
 Tests for ICS calendar export functionality.
 """
 
-import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
 from sqlmodel import Session
 
 from services.schedule_service import export_all_members_ics, export_member_ics
