@@ -26,6 +26,7 @@ class TestShiftCRUD:
             duration_seconds=duration_8h,
             days=["1", "3"],  # Monday, Wednesday
             description="Morning shift",
+            members_required=1,
         )
         session.add(shift)
         session.commit()
@@ -61,7 +62,7 @@ class TestShiftCRUD:
     def test_create_shift_with_defaults(self, session: Session):
         """Test creating a shift with default values."""
         # Act
-        shift = Shift()
+        shift = Shift(members_required=1)
         session.add(shift)
         session.commit()
         session.refresh(shift)
@@ -70,6 +71,7 @@ class TestShiftCRUD:
         assert shift.seconds_since_midnight == 0  # Midnight
         assert shift.duration_seconds == 3600  # 1 hour
         assert shift.days == []
+        assert shift.members_required == 1
         assert shift.description == ""
 
     def test_read_shift(self, session: Session, shift_factory):
@@ -159,11 +161,11 @@ class TestShiftTimeHandling:
     def test_shift_seconds_since_midnight_boundary_values(self, session: Session):
         """Test boundary values for seconds_since_midnight."""
         # Test midnight (0 seconds)
-        shift_midnight = Shift(seconds_since_midnight=0)
+        shift_midnight = Shift(seconds_since_midnight=0, members_required=1)
         session.add(shift_midnight)
 
         # Test end of day (86399 seconds = 23:59:59)
-        shift_end_of_day = Shift(seconds_since_midnight=86399)
+        shift_end_of_day = Shift(seconds_since_midnight=86399, members_required=1)
         session.add(shift_end_of_day)
 
         session.commit()
@@ -262,7 +264,7 @@ class TestShiftValidation:
 
     def test_shift_description_defaults_to_empty(self, session: Session):
         """Test that description defaults to empty string."""
-        shift = Shift()
+        shift = Shift(members_required=1)
         session.add(shift)
         session.commit()
         session.refresh(shift)

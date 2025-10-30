@@ -132,6 +132,7 @@ def shift_factory(session: Session):
         duration_seconds: int = 3600,
         days: list[str] | None = None,
         description: str = "",
+        members_required: int = 1,
         **kwargs,
     ) -> Shift:
         if days is None:
@@ -142,6 +143,7 @@ def shift_factory(session: Session):
             duration_seconds=duration_seconds,
             days=days,
             description=description,
+            members_required=members_required,
             **kwargs,
         )
         session.add(shift)

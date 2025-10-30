@@ -1,11 +1,11 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from ortools.sat.python import cp_model
 from sqlalchemy.orm import selectinload
-from sqlmodel import select
+from sqlmodel import Session, select
 
-from db import Session, engine
 from models import (Member, MemberGroupShift, MemberShiftScheduled, Shift,
                     ShiftConstraint, ShiftScheduled)
 
@@ -294,3 +294,155 @@ def find_key_in_dict(obj_id: uuid.UUID, model_dict: dict[int, Member | Shift]) -
         if obj.id == obj_id:
             return k
     raise ValueError("No such object")
+
+
+def export_member_ics(
+    session: Session,
+    member_id: uuid.UUID,
+    start: datetime,
+    end: datetime,
+    output_dir: str,
+) -> None:
+    """
+    Export scheduled shifts for a single member to an ICS file.
+
+    Args:
+        session: Database session
+        member_id: UUID of the member
+        start: Start date for filtering shifts (inclusive)
+        end: End date for filtering shifts (exclusive)
+        output_dir: Directory to write the ICS file
+    """
+    # Get member
+    member = session.exec(select(Member).where(Member.id == member_id)).first()
+    if not member:
+        raise ValueError(f"Member with id {member_id} not found")
+
+    # Query scheduled shifts for this member within date range
+    query = (
+        select(ShiftScheduled)
+        .join(
+            MemberShiftScheduled,
+            ShiftScheduled.id == MemberShiftScheduled.shift_scheduled_id,
+        )
+        .where(MemberShiftScheduled.member_id == member_id)
+        .where(ShiftScheduled.start_at >= start)
+        .where(ShiftScheduled.start_at < end)
+        .order_by(ShiftScheduled.start_at)
+    )
+
+    shifts = session.exec(query).all()
+
+    # Generate ICS content
+    ics_lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Healthy Shifts//Schedule Export//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+    ]
+
+    for shift in shifts:
+        # Format datetime in ICS format (YYYYMMDDTHHMMSSZ for UTC)
+        dtstart = shift.start_at.strftime("%Y%m%dT%H%M%SZ")
+        dtend = shift.end_at.strftime("%Y%m%dT%H%M%SZ")
+
+        ics_lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:{shift.id}@healthyshifts.local",
+                f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+                f"DTSTART:{dtstart}",
+                f"DTEND:{dtend}",
+                f"SUMMARY:{shift.description}",
+                "END:VEVENT",
+            ]
+        )
+
+    ics_lines.append("END:VCALENDAR")
+
+    # Write to file
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    ics_file = output_path / f"{member.email}.ics"
+    # Write in binary mode to ensure CRLF line endings are preserved across platforms
+    ics_content = "\r\n".join(ics_lines) + "\r\n"
+    ics_file.write_bytes(ics_content.encode("utf-8"))
+
+
+def export_all_members_ics(
+    session: Session,
+    start: datetime,
+    end: datetime,
+    output_dir: str,
+) -> None:
+    """
+    Export scheduled shifts for all members to ICS files.
+
+    Creates one ICS file per member and one global ICS file with all shifts.
+
+    Args:
+        session: Database session
+        start: Start date for filtering shifts (inclusive)
+        end: End date for filtering shifts (exclusive)
+        output_dir: Directory to write the ICS files
+    """
+    # Get all members
+    members = session.exec(select(Member)).all()
+
+    # Export individual files for each member
+    for member in members:
+        export_member_ics(session, member.id, start, end, output_dir)
+
+    # Create global ICS file with all shifts for all members
+    query = (
+        select(ShiftScheduled, Member)
+        .join(
+            MemberShiftScheduled,
+            ShiftScheduled.id == MemberShiftScheduled.shift_scheduled_id,
+        )
+        .join(Member, MemberShiftScheduled.member_id == Member.id)
+        .where(ShiftScheduled.start_at >= start)
+        .where(ShiftScheduled.start_at < end)
+        .order_by(ShiftScheduled.start_at)
+    )
+
+    results = session.exec(query).all()
+
+    # Generate ICS content for global file
+    ics_lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Healthy Shifts//Schedule Export//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+    ]
+
+    for shift, member in results:
+        # Format datetime in ICS format (YYYYMMDDTHHMMSSZ for UTC)
+        dtstart = shift.start_at.strftime("%Y%m%dT%H%M%SZ")
+        dtend = shift.end_at.strftime("%Y%m%dT%H%M%SZ")
+
+        ics_lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:{shift.id}-{member.id}@healthyshifts.local",
+                f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+                f"DTSTART:{dtstart}",
+                f"DTEND:{dtend}",
+                f"SUMMARY:{shift.description} - {member.name}",
+                "END:VEVENT",
+            ]
+        )
+
+    ics_lines.append("END:VCALENDAR")
+
+    # Write global file
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    ics_file = output_path / "all_members.ics"
+    # Write in binary mode to ensure CRLF line endings are preserved across platforms
+    ics_content = "\r\n".join(ics_lines) + "\r\n"
+    ics_file.write_bytes(ics_content.encode("utf-8"))

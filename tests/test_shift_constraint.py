@@ -265,20 +265,20 @@ class TestShiftConstraintValidation:
     def test_shift_constraint_within_last_shifts_must_be_positive(
         self, session: Session, shift_factory
     ):
-        """Test that within_last_shifts must be a positive integer."""
+        """Test that within_last_shifts must be non-negative (>= 0)."""
         shift1 = shift_factory()
         shift2 = shift_factory()
 
-        # Test zero value
-        with pytest.raises(Exception):  # Pydantic ValidationError
-            session.add(
-                ShiftConstraint(
-                    shift_id=shift1.id, linked_shift_id=shift2.id, within_last_shifts=0
-                )
-            )
-            session.commit()
+        # Test zero value is allowed (prevents assignment to both shifts in the same day)
+        constraint_zero = ShiftConstraint(
+            shift_id=shift1.id, linked_shift_id=shift2.id, within_last_shifts=0
+        )
+        session.add(constraint_zero)
+        session.commit()
+        session.refresh(constraint_zero)
+        assert constraint_zero.within_last_shifts == 0
 
-        # Test negative value
+        # Test negative value is rejected
         with pytest.raises(Exception):  # Pydantic ValidationError
             session.add(
                 ShiftConstraint(
