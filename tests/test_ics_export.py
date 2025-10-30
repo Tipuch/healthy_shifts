@@ -230,16 +230,23 @@ class TestICSExport:
             "Event must have SUMMARY"
         )
 
-        # Verify datetime format (YYYYMMDDTHHMMSSZ for UTC)
+        # Verify datetime format (YYYYMMDDTHHMMSS for floating time - no timezone)
         dtstart_line = [line for line in event_lines if line.startswith("DTSTART:")][0]
         dtstart_value = dtstart_line.split(":")[1]
-        assert len(dtstart_value) == 16, "DTSTART should be in YYYYMMDDTHHMMSSZ format"
-        assert dtstart_value.endswith("Z"), "DTSTART should end with Z for UTC"
-        assert dtstart_value == "20250215T143000Z", "DTSTART should match start time"
+        assert len(dtstart_value) == 15, (
+            "DTSTART should be in YYYYMMDDTHHMMSS format (floating time)"
+        )
+        assert not dtstart_value.endswith("Z"), (
+            "DTSTART should NOT end with Z (floating time, not UTC)"
+        )
+        # Floating time means it should display in the user's local timezone
+        assert dtstart_value == "20250215T143000", "DTSTART should match start time"
 
         dtend_line = [line for line in event_lines if line.startswith("DTEND:")][0]
         dtend_value = dtend_line.split(":")[1]
-        assert dtend_value == "20250215T183000Z", "DTEND should match end time"
+        assert dtend_value == "20250215T183000", (
+            "DTEND should match end time (floating time)"
+        )
 
         # Verify SUMMARY contains the description
         summary_line = [line for line in event_lines if line.startswith("SUMMARY:")][0]

@@ -296,6 +296,50 @@ def find_key_in_dict(obj_id: uuid.UUID, model_dict: dict[int, Member | Shift]) -
     raise ValueError("No such object")
 
 
+def _generate_ics_content(
+    events: list[tuple[ShiftScheduled, str, str]],
+) -> str:
+    """
+    Generate ICS calendar content from a list of events.
+
+    Args:
+        events: List of tuples (shift, uid_suffix, summary)
+            - shift: ShiftScheduled instance
+            - uid_suffix: Unique identifier suffix for the event
+            - summary: Event summary/title
+
+    Returns:
+        ICS formatted calendar content as string
+    """
+    ics_lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Healthy Shifts//Schedule Export//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+    ]
+
+    for shift, uid_suffix, summary in events:
+        # Format as floating time (no timezone - displays in user's local timezone)
+        dtstart = shift.start_at.replace(tzinfo=None).strftime("%Y%m%dT%H%M%S")
+        dtend = shift.end_at.replace(tzinfo=None).strftime("%Y%m%dT%H%M%S")
+
+        ics_lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:{uid_suffix}@healthyshifts.local",
+                f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+                f"DTSTART:{dtstart}",
+                f"DTEND:{dtend}",
+                f"SUMMARY:{summary}",
+                "END:VEVENT",
+            ]
+        )
+
+    ics_lines.append("END:VCALENDAR")
+    return "\r\n".join(ics_lines) + "\r\n"
+
+
 def export_member_ics(
     session: Session,
     member_id: uuid.UUID,
@@ -333,33 +377,11 @@ def export_member_ics(
 
     shifts = session.exec(query).all()
 
-    # Generate ICS content
-    ics_lines = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Healthy Shifts//Schedule Export//EN",
-        "CALSCALE:GREGORIAN",
-        "METHOD:PUBLISH",
-    ]
+    # Prepare events for ICS generation
+    events = [(shift, str(shift.id), shift.description) for shift in shifts]
 
-    for shift in shifts:
-        # Format datetime in ICS format (YYYYMMDDTHHMMSSZ for UTC)
-        dtstart = shift.start_at.strftime("%Y%m%dT%H%M%SZ")
-        dtend = shift.end_at.strftime("%Y%m%dT%H%M%SZ")
-
-        ics_lines.extend(
-            [
-                "BEGIN:VEVENT",
-                f"UID:{shift.id}@healthyshifts.local",
-                f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
-                f"DTSTART:{dtstart}",
-                f"DTEND:{dtend}",
-                f"SUMMARY:{shift.description}",
-                "END:VEVENT",
-            ]
-        )
-
-    ics_lines.append("END:VCALENDAR")
+    # Generate ICS content using shared helper
+    ics_content = _generate_ics_content(events)
 
     # Write to file
     output_path = Path(output_dir)
@@ -367,7 +389,6 @@ def export_member_ics(
 
     ics_file = output_path / f"{member.email}.ics"
     # Write in binary mode to ensure CRLF line endings are preserved across platforms
-    ics_content = "\r\n".join(ics_lines) + "\r\n"
     ics_file.write_bytes(ics_content.encode("utf-8"))
 
 
@@ -410,33 +431,14 @@ def export_all_members_ics(
 
     results = session.exec(query).all()
 
-    # Generate ICS content for global file
-    ics_lines = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Healthy Shifts//Schedule Export//EN",
-        "CALSCALE:GREGORIAN",
-        "METHOD:PUBLISH",
+    # Prepare events for ICS generation (global file with member names)
+    events = [
+        (shift, f"{shift.id}-{member.id}", f"{shift.description} - {member.name}")
+        for shift, member in results
     ]
 
-    for shift, member in results:
-        # Format datetime in ICS format (YYYYMMDDTHHMMSSZ for UTC)
-        dtstart = shift.start_at.strftime("%Y%m%dT%H%M%SZ")
-        dtend = shift.end_at.strftime("%Y%m%dT%H%M%SZ")
-
-        ics_lines.extend(
-            [
-                "BEGIN:VEVENT",
-                f"UID:{shift.id}-{member.id}@healthyshifts.local",
-                f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
-                f"DTSTART:{dtstart}",
-                f"DTEND:{dtend}",
-                f"SUMMARY:{shift.description} - {member.name}",
-                "END:VEVENT",
-            ]
-        )
-
-    ics_lines.append("END:VCALENDAR")
+    # Generate ICS content using shared helper
+    ics_content = _generate_ics_content(events)
 
     # Write global file
     output_path = Path(output_dir)
@@ -444,5 +446,4 @@ def export_all_members_ics(
 
     ics_file = output_path / "all_members.ics"
     # Write in binary mode to ensure CRLF line endings are preserved across platforms
-    ics_content = "\r\n".join(ics_lines) + "\r\n"
     ics_file.write_bytes(ics_content.encode("utf-8"))
