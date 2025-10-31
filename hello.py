@@ -56,6 +56,7 @@ def main():
         pediatry_doctors = [
             "Dr. Maria Garcia",
             "Dr. David Kim",
+            "Dr. Nean Sonthivanit",
         ]
 
         obstetrics_doctors = [

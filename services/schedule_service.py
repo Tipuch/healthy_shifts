@@ -173,12 +173,16 @@ def schedule_shifts(start: datetime, end: datetime):
             for s in all_shifts:
                 if m not in shift_eligibility[s]:
                     model.add(shifts[(m, d, s)] == 0)
+                    model.add(working_hours[(m, d, s)] == 0)
                 else:
                     (
                         model.add(
                             working_hours[(m, d, s)]
                             == (shifts_dict[s].duration_seconds // 3600)
                         ).only_enforce_if(shifts[(m, d, s)])
+                    )
+                    model.add(working_hours[(m, d, s)] == 0).only_enforce_if(
+                        shifts[(m, d, s)].Not()
                     )
 
     # Soft fairness constraint: minimize the difference in shift counts
