@@ -388,6 +388,27 @@ def main():
         )
         session.add(
             ShiftConstraint(
+                shift_id=er_evening.id,
+                linked_shift_id=er_night.id,
+                within_last_shifts=0,
+            )
+        )
+        session.add(
+            ShiftConstraint(
+                shift_id=er_night.id,
+                linked_shift_id=er_morning.id,
+                within_last_shifts=1,
+            )
+        )
+        session.add(
+            ShiftConstraint(
+                shift_id=er_morning.id,
+                linked_shift_id=er_evening.id,
+                within_last_shifts=0,
+            )
+        )
+        session.add(
+            ShiftConstraint(
                 shift_id=er_night.id,
                 linked_shift_id=opd_weekday_night.id,
                 within_last_shifts=1,

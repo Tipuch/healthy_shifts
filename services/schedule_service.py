@@ -19,6 +19,7 @@ from models import (
 
 
 MAX_HOURS_IN_3_DAYS = 32
+MAX_DAYS_IN_A_ROW = 3
 
 
 def schedule_shifts(start: datetime, end: datetime):
@@ -105,13 +106,23 @@ def schedule_shifts(start: datetime, end: datetime):
 
     shifts = {}
     working_hours = {}
+    days_worked = {}
     for m in all_members:
         for d in all_days:
+            days_worked[(m, d)] = model.new_bool_var(f"day_worked_m{m}_d{d}")
             for s in all_shifts:
                 shifts[(m, d, s)] = model.new_bool_var(f"shift_m{m}_d{d}_s{s}")
                 working_hours[(m, d, s)] = model.new_int_var(
                     0, 24, f"working_hours_m{m}_d{d}_s{s}"
                 )
+
+    for d in all_days:
+        for m in all_members:
+            model.add_max_equality(days_worked[(m, d)], [shifts[(m, d, s)] for s in all_shifts])
+
+    for d in range(num_days - MAX_DAYS_IN_A_ROW):
+        for m in all_members:
+            model.add(sum(days_worked[(m, d + i)] for i in range(MAX_DAYS_IN_A_ROW+1)) <= MAX_DAYS_IN_A_ROW)
 
     for d in range(num_days - 1):
         for m in all_members:
