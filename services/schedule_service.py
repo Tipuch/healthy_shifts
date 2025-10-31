@@ -118,11 +118,16 @@ def schedule_shifts(start: datetime, end: datetime):
 
     for d in all_days:
         for m in all_members:
-            model.add_max_equality(days_worked[(m, d)], [shifts[(m, d, s)] for s in all_shifts])
+            model.add_max_equality(
+                days_worked[(m, d)], [shifts[(m, d, s)] for s in all_shifts]
+            )
 
     for d in range(num_days - MAX_DAYS_IN_A_ROW):
         for m in all_members:
-            model.add(sum(days_worked[(m, d + i)] for i in range(MAX_DAYS_IN_A_ROW+1)) <= MAX_DAYS_IN_A_ROW)
+            model.add(
+                sum(days_worked[(m, d + i)] for i in range(MAX_DAYS_IN_A_ROW + 1))
+                <= MAX_DAYS_IN_A_ROW
+            )
 
     for d in range(num_days - 1):
         for m in all_members:
