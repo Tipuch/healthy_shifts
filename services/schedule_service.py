@@ -1,3 +1,4 @@
+import math
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,7 +18,7 @@ from models import (
 )
 
 
-MAX_HOURS_IN_2_DAYS = 32
+MAX_HOURS_IN_3_DAYS = 32
 
 
 def schedule_shifts(start: datetime, end: datetime):
@@ -121,7 +122,7 @@ def schedule_shifts(start: datetime, end: datetime):
                         for s in all_shifts
                     ]
                 )
-                <= MAX_HOURS_IN_2_DAYS
+                <= MAX_HOURS_IN_3_DAYS
             )
 
     for d in all_days:
@@ -178,7 +179,7 @@ def schedule_shifts(start: datetime, end: datetime):
                     (
                         model.add(
                             working_hours[(m, d, s)]
-                            == (shifts_dict[s].duration_seconds // 3600)
+                            == math.ceil(shifts_dict[s].duration_seconds / 3600)
                         ).only_enforce_if(shifts[(m, d, s)])
                     )
                     model.add(working_hours[(m, d, s)] == 0).only_enforce_if(
